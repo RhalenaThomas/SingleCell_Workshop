@@ -340,43 +340,47 @@ https://sydneybiox.github.io/scClassify/articles/scClassify.html
 path <- "/Users/rhalenathomas/Documents/Data/scRNAseq/PublicData/"
 # we have the data prepared as a Seurat object
 
-ref <- readRDS(paste(path,"Nowakowski_dev_cortext.RDS",sep = ""))
+ref <- readRDS(paste(path,"Karolinski_DevForebrain_downsample_Level1.RDS",sep = ""))
 ref
 
 #check the meta data
 colnames(ref@meta.data)
 
+unique(ref$Clusters)
+unique(ref$Level1)
+unique(ref$Celltypes)
+
+# make a new meta data with fewer cell types.
+
 
 
 ```
-The labelled cell types are in WGCNAcluster
+The labelled cell types are in WGCNAcluster but there are too many to work well as a reference matrix.  scClassify suggests recommends to start with fewer cell types.
 
 
 We need to make the reference and query objects into a "dgCMatrix" object
 
 ```{r}
 # load the library
-library("scClassify")
-library(SingleCellExperiment)
-library("Matrix")
-# Convert sparse matrix to dgCMatrix object
-dgCMat_ref <- t(Matrix(ref@assays$RNA@counts, sparse = TRUE))
-# Get metadata as a dataframe
-metadata_df <- data.frame(cell_type = ref$WGCNAcluster)
-rownames(metadata_df) <- colnames(ref@assays$RNA@counts)
+#library("Seurat")
+#library("scClassify")
+#ibrary(SingleCellExperiment)
+#library("Matrix")
 
-# Combine count matrix and metadata into one matrix
-combined_mat <- cbind(dgCMat_ref, metadata_df)
-#convert to matrix
-# Convert combined matrix to a matrix object
-combined_mat <- as.matrix(combined_mat)
+# make a dfCMatrix from Seurat object to use in scClassify
 
-# Convert matrix to a dgCMatrix object
-combined_dgCMatrix <- as(combined_mat, "dgCMatrix")
+dgCMat_ref <- GetAssayData(ref)
+# get the cell type data
+Idents(ref) <- "Celltypes"
+ref_celltypes <- Idents(ref)
+unique(ref_celltypes)
 
-# convert the integrated clustered object into 
-query_expr_mat <- as.sparse(integrated_seurate@assays$RNA@counts)
-dgCMat_query <- as(query_expr_mat, "dgCMatrix")
+
+# convert the integrated clustered object into dgCMatrix
+DefaultAssay(integrated_seurate) <- "RNA"
+dgCMat_query <- GetAssayData(integrated_seurate)
+Idents(integrated_seurate) <- "Original_clusterID"
+query_celltypes <- Idents(integrated_seurate)
 
 # check the objects
 dim(dgCMat_ref)
@@ -389,17 +393,22 @@ class(dgCMat_query)
 
 See the original cell type annotations
 ```{r}
-table(dgCMat_ref)
+table(ref_celltypes)
+table(query_celltypes)
 
+length(ref_celltypes)
+length(query_celltypes)
 
 ```
-We first perform non-ensemble scClassify
+
+
+We can now perform non-ensemble scClassify
 
 ```{r}
-scClassify_res <- scClassify(exprsMat_train = exprsMat_xin_subset,
-                             cellTypes_train = xin_cellTypes,
-                             exprsMat_test = list(wang = exprsMat_wang_subset),
-                             cellTypes_test = list(wang = wang_cellTypes),
+scClassify_res <- scClassify(exprsMat_train = dgCMat_ref,
+                             cellTypes_train = ref_celltypes,
+                             exprsMat_test = dgCMat_query,
+                             cellTypes_test = query_celltypes,
                              tree = "HOPACH",
                              algorithm = "WKNN",
                              selectFeatures = c("limma"),
@@ -418,7 +427,75 @@ plotCellTypeTree(cellTypeTree(scClassify_res$trainRes))
 
 Check the predictions
 ```{r}
-table(scClassify_res$testRes$wang$pearson_WKNN_limma$predRes, wang_cellTypes)
+
+table(scClassify_res$testRes$test$pearson_WKNN_limma$predRes,query_celltypes)
+
+
+
 ```
+
+We want to predict cluster labels
+
+```{r}
+
+# we need to make the test meta data into the cluster ids 
+Idents(integrated_seurate) <- "integrated_snn_res.0.4"
+query_clusters <- Idents(integrated_seurate)
+
+
+scClassify_res <- scClassify(exprsMat_train = dgCMat_ref,
+                             cellTypes_train = ref_celltypes,
+                             exprsMat_test = dgCMat_query,
+                             cellTypes_test = query_clusters,
+                             tree = "HOPACH",
+                             algorithm = "WKNN",
+                             selectFeatures = c("limma"),
+                             similarity = c("pearson"),
+                             returnList = FALSE,
+                             verbose = FALSE)
+```
+
+
+See the cell type predictions by cluster
+
+```{r}
+
+table(scClassify_res$testRes$test$pearson_WKNN_limma$predRes,query_clusters)
+
+
+```
+
+Check another reference
+
+```{r}
+# refrence data
+path <- "/Users/rhalenathomas/Documents/Data/scRNAseq/PublicData/"
+# we have the data prepared as a Seurat object
+
+ref2 <- readRDS(paste(path,"Nowakowski_dev_cortext.RDS",sep = ""))
+ref2
+
+#check the meta data
+colnames(ref2@meta.data)
+
+#make the reference matrix and reference cell types 
+
+
+dgCMat_ref2 <- GetAssayData(ref2)
+# get the cell type data
+Idents(ref) <- "Celltypes"
+ref_celltypes2 <- Idents(ref2)
+
+
+# check the object
+dim(dgCMat_ref2)
+
+
+class(dgCMat_ref2)
+
+
+
+```
+
 
 

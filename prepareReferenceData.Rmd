@@ -1,0 +1,137 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+```{r}
+library(Seurat)
+# we need to create the reference matrices
+#matrices where each row is a gene and each column a cell for a reference dataset and a query dataset
+
+# refrence data
+path <- "/Users/rhalenathomas/Documents/Data/scRNAseq/PublicData/"
+# we have the data prepared as a Seurat object
+
+ref <- readRDS(paste(path,"Karolinski_DevForebrain_downsample_Level1.RDS",sep = ""))
+ref
+
+#check the meta data
+colnames(ref@meta.data)
+
+unique(ref$Clusters)
+unique(ref$Level1)
+
+# make a new meta data with fewer cell types.
+
+
+```
+
+```{r}
+
+DimPlot(ref, group.by = "Clusters")
+```
+
+```{r}
+Idents(ref) <- "Clusters"
+sample.levels <- levels(ref)
+length(sample.levels)
+
+```
+
+```{r}
+# rename
+
+new.labels <- c("Neuroblast","RG","Glioblast","IN","EN",
+                "EN","OPC","Microglia","EN","IN",
+                "IN","EN","RG","RG","RG",
+                "Pre-OPC","NPC","Endothelial","Neurons","RG",
+                "Neuroblast","VLMC","IN","Neuroblast","RG",
+                "IN","Neuroblast","U","Neuroblast","Neuroblast")
+length(new.labels)
+ref <- annotate(ref, annotations = new.labels, to_label = "Clusters",annotation_name = "Celltypes")
+table(ref$Clusters)
+table(ref$Celltypes)
+
+
+
+
+```
+
+```{r}
+
+path <- "/Users/rhalenathomas/Documents/Data/scRNAseq/PublicData/"
+# we have the data prepared as a Seurat object
+
+saveRDS(ref,paste(path,"Karolinski_DevForebrain_downsample_Level1.RDS",sep = ""))
+
+
+```
+
+
+```{r}
+
+# refrence data
+path <- "/Users/rhalenathomas/Documents/Data/scRNAseq/PublicData/"
+# we have the data prepared as a Seurat object
+
+ref2 <- readRDS(paste(path,"Nowakowski_dev_cortext.RDS",sep = ""))
+ref2
+
+#check the meta data
+colnames(ref2@meta.data)
+
+```
+
+```{r}
+Idents(ref2) <- "WGCNAcluster"
+sample.levels <- levels(ref2)
+length(sample.levels)
+
+```
+
+
+```{r}
+
+
+# create a new dataslot
+Idents(ref2) <- "WGCNAcluster"
+ref2 <- AddMetaData(object=ref2, metadata=Idents(ref2), col.name = "Celltypes")
+
+Idents(ref2) <- "Celltypes"
+# create a vector of new labels
+new.labels <- c("Glyc","RG","RG","EN","EN","EN",
+                "RG","RG","IN","IN","IPC","RG",
+                "IPC","IPC","OPC","IN","Mural",
+                "IPC","IN","IPC","EN","IN","","EN",
+                "MGE","IN","MGE","IN","MGE","MGE",
+                "MGE","MGE","IN","Astrocyte","IN","EN",
+                "IN","EN","EN","EN","RG","Endothelial",
+                "Microglia","Choroid","U","U","U","U")
+
+# assign the new labels to the existing clusters
+
+names(new.labels) <- levels(ref2)
+ref2@meta.data$Celltypes <- new.labels[as.character(ref2@meta.data$Celltypes)]
+
+# check if the new labels have been assigned correctly
+unique(ref2@meta.data$Celltypes)
+
+table(ref2$Celltypes)
+table(ref2$WGCNAcluster)
+
+
+```
+
+```{r}
+path <- "/Users/rhalenathomas/Documents/Data/scRNAseq/PublicData/"
+# we have the data prepared as a Seurat object
+
+saveRDS(ref2,paste(path,"Nowakowski_dev_cortext.RDS",sep = ""))
+
+
+```
+
