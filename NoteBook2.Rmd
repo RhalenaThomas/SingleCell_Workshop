@@ -193,7 +193,8 @@ db <- c('CellMarker_Augmented_2021','Azimuth_Cell_Types_2021')
 
 ```
 
-Here is a small fuction to easily check each cluster
+Here is a small function to run easily on each cluster and find the cell type library predictions
+
 ```{r}
 
 checkCelltypes <- function(cluster_num = 0){
@@ -465,7 +466,7 @@ table(scClassify_res$testRes$test$pearson_WKNN_limma$predRes,query_clusters)
 
 ```
 
-Check another reference
+Check another reference set
 
 ```{r}
 # refrence data
@@ -483,9 +484,9 @@ colnames(ref2@meta.data)
 
 dgCMat_ref2 <- GetAssayData(ref2)
 # get the cell type data
-Idents(ref) <- "Celltypes"
+Idents(ref2) <- "Celltypes"
 ref_celltypes2 <- Idents(ref2)
-
+unique(ref_celltypes2)
 
 # check the object
 dim(dgCMat_ref2)
@@ -497,5 +498,19 @@ class(dgCMat_ref2)
 
 ```
 
+```{r}
+# predict the cluster cell types from the second reference
+scClassify_res <- scClassify(exprsMat_train = dgCMat_ref2,
+                             cellTypes_train = ref_celltypes2,
+                             exprsMat_test = dgCMat_query,
+                             cellTypes_test = query_clusters,
+                             tree = "HOPACH",
+                             algorithm = "WKNN",
+                             selectFeatures = c("limma"),
+                             similarity = c("pearson"),
+                             returnList = FALSE,
+                             verbose = FALSE)
+
+```
 
 
