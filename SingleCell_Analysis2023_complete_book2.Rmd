@@ -1,0 +1,523 @@
+---
+title: "SingleCellAnalysisWorkshop_2023 Book2"
+output:
+  html_document:
+    df_print: paged
+---
+
+# Single Cell Analysis in R 2023 Notebook 2
+
+This workbook presents the next steps in the basic work flow for scRNAseq analysis
+1. Merging samples and batch correction
+2. Clustering
+3. Cluster annotation
+4. Compare proportions of cell types
+
+This workbook assumes two Seurat objects 1. adolescent and 2. adult brain samples.
+The Seurat objects are created and the data is cleaned in Notebook 2. 
+Running 
+
+
+```{r}
+# load libraries
+library(Seurat)
+library(tidyverse)
+
+
+setwd <- "C:/Users/Home/Documents/GitHub/SingleCell_Workshop/"
+
+# read in the data objects if starting from save files
+adolescent_data_seurat <- readRDS("adolsecentSeurate.Rds") %>%
+  RenameCells(add.cell.id = "Adol_")
+adult_data_seurat <- readRDS("adultSeurate.Rds") %>%
+  RenameCells(add.cell.id = "Adult_")
+
+```
+
+
+Merge data objects
+```{r}
+
+merge_seurate <- merge(adolescent_data_seurat,adult_data_seurat)
+merge_seurate
+
+unique(merge_seurate$orig.ident)
+
+
+```
+Integrate objects using the Seurat function
+```{r}
+
+sample.list <- SplitObject(merge_seurate, split.by = "orig.ident")
+
+# We have already normalized and identified variable features in each sample
+# If we had not done so we can normalize here
+#for (i in 1:length(sample.list)){
+ # org.list[[i]] <- NormalizeData(org.list[[i]], verbose = FALSE)
+  #org.list[[i]] <- FindVariableFeatures(org.list[[i]], selection.method = "vst")
+#}
+
+# Now we find features that can act as anchors between the two samples
+int.anchors <- FindIntegrationAnchors(object.list = sample.list, dims = 1:50)
+integrated_seurate <- IntegrateData(anchorset = int.anchors, dims = 1:50)
+
+
+```
+
+Perform dimensional reduction PCA and UMAP on the merge and intergrated objects
+
+```{r}
+# merge object
+DefaultAssay(merge_seurate) <- "RNA"
+
+merge_seurate <- ScaleData(merge_seurate, verbose = FALSE)
+# in the merge data set we sill need features for the PCA input
+merge_seurate <- FindVariableFeatures(merge_seurate, selection.method = "vst")
+merge_seurate <- RunPCA(merge_seurate, npcs = 30, verbose = FALSE)
+merge_seurate <- RunUMAP(merge_seurate, reduction = "pca", dims = 1:30)
+
+
+```
+
+Repeat PCA and UMAP for the integrated object
+```{r}
+Idents(integrated_seurate) <- "integrated"
+integrated_seurate <- ScaleData(integrated_seurate, verbose = FALSE)
+# in the integrated features will be the pca input
+integrated_seurate <- RunPCA(integrated_seurate, npcs = 30, verbose = FALSE)
+integrated_seurate <- RunUMAP(integrated_seurate, reduction = "pca", dims = 1:30)
+
+```
+
+Visualize the UMAPs comparing the merged and integrated objects
+```{r}
+#library(ggplot2)
+
+p1 <- DimPlot(merge_seurate, group.by = "orig.ident") + ggtitle("Merge")
+p2 <- DimPlot(integrated_seurate, group.by = "orig.ident") + ggtitle("Integrated")
+
+p1
+p2
+
+
+```
+We can see a large shift in the two populations when the data is integrated (harmonized).
+
+
+
+Cluster the integrated data
+
+```{r}
+# see the importance of the pca components
+ElbowPlot(integrated_seurate, ndims=30)
+integrated_seurate
+
+```
+Choose 15 PCs
+There are 9044 cells.  A common rule of thumb for choosing k for nearest neighbours is using the square root of the number of cells = 95
+
+```{r}
+# calculate the square root
+sqrt(9044)
+
+# the K parameter changes the size of clusters by changing the starting nodes input into the Louvain network
+
+integrated_seurate <- FindNeighbors(integrated_seurate, dims = 1:15, k.param = 95)
+# the number of clusters is dependent on the resolution a number from 0-2. 
+# Higher values make more clusters
+# we include 
+integrated_seurate <- FindClusters(integrated_seurate, resolution = c(0,0.05,0.25,0.4,0.5,0.6,1,1.5) )
+
+# we can visualize which cells are grouped together at different resolutions using clustree
+library(clustree)
+clustree(integrated_seurate, prefix = "integrated_snn_res.")
+
+```
+
+Visualize the UMAP of the different cluster resolutions
+```{r}
+res <- c(0.05,0.25,0.4,0.5,0.6,1,1.5)
+resolutions <- paste("integrated_snn_res.", res, sep="")
+resolutions
+
+for(r in resolutions){
+  print(DimPlot(integrated_seurate, group.by = r))
+}
+
+
+```
+Now we choose a resolution to annotate. We are expecting microglia, astrocytes, oligodendrocytes and OPCs. Resolution 0.4 looks like a good amount of clusters.
+
+
+Cluster annotation
+
+```{r}
+# find cluster markers
+
+# we need to select the level of clustering that we want to annotate
+Idents(integrated_seurate) <- "integrated_snn_res.0.4"
+ClusterMarkers <- FindAllMarkers(integrated_seurate, only.pos = TRUE)
+
+
+```
+
+Lets look at the markers to see if they identify cell types
+
+```{r}
+head(ClusterMarkers)
+top5 <- ClusterMarkers %>% group_by(cluster) %>% top_n(n=5, wt =avg_log2FC)
+DoHeatmap(integrated_seurate, features = top5$gene, size = 3, angle = 90, group.by = "integrated_snn_res.0.4")
+
+```
+We can see cluster 1 and have a huge overlap. Cluster 5 and 6 are also overlapping.
+
+
+We can look at the markers for each cluster using Gene set analysis or cell type libraries
+
+```{r}
+
+library(devtools)
+#install_github("wjawaid/enrichR")
+library(enrichR)
+
+setEnrichrSite("Enrichr") # Human genes
+# list of all the databases
+
+dbs <- listEnrichrDbs()
+
+# this will list the possible libraries
+dbs
+
+# select libraries with cell types
+db <- c('CellMarker_Augmented_2021','Azimuth_Cell_Types_2021')
+
+
+
+
+```
+
+Here is a small function to run easily on each cluster and find the cell type library predictions
+
+```{r}
+
+checkCelltypes <- function(cluster_num = 0){
+  clusterX <- ClusterMarkers %>% filter(cluster == cluster_num & avg_log2FC > 0.25)
+  genes <- clusterX$gene
+  # the cell type libraries
+  # get the results for each library
+  clusterX.cell <- enrichr(genes, databases = db)
+  # visulize the results
+print(plotEnrich(clusterX.cell[[1]], showTerms = 20, numChar = 40, y = "Count", orderBy = "P.value", title = 'CellMarker_Augmented_2021'))
+print(plotEnrich(clusterX.cell[[2]], showTerms = 20, numChar = 40, y = "Count", orderBy = "P.value", title = 'Azimuth_Cell_Types_2021'))
+
+}
+
+```
+
+Run the function for each cluster to see if we can identify cell types
+
+```{r}
+
+cluster0 <- checkCelltypes(cluster_num = 0)
+
+```
+Cluster 0 is some kind of immune cells, possibly dendritic cell or macrophage.  These are likely the microglia
+
+```{r}
+cluster1 <- checkCelltypes(cluster_num = 1)
+```
+Cluster 1 appears to have oligodendrocytes
+
+```{r}
+cluster2 <- checkCelltypes(cluster_num = 2)
+```
+Cluster 2 is also immune cells, embryonic microglia.
+
+```{r}
+# cluster 3
+cluster3 <- checkCelltypes(cluster_num = 3)
+
+```
+
+```{r}
+# cluster 4
+cluster4 <- checkCelltypes(cluster_num = 4)
+```
+
+```{r}
+# cluster 5
+cluster5 <- checkCelltypes(cluster_num = 5)
+
+```
+
+```{r}
+# cluster 6
+
+```
+
+```{r}
+# cluster 7
+
+```
+
+
+We can remove the lists of cell library outputs to clean up our work envirnment
+```{r}
+rm(cluster0,cluster1,cluster2,cluster3,cluster4,cluster5,cluster6,cluster7)
+
+```
+
+
+Looking at known cell type markers is another way to identify cell types
+```{r}
+# marker lists
+
+#  doi: 10.1002/glia.23767
+microglia <- c("IBA1","P2RY12","P2RY13","TREM119", "GPR34","SIGLECH","TREM2",
+               "CX3CR1","FCRLS","OLFML3","HEXB","TGFBR1", "SALL1","MERTK",
+               "PROS1")
+
+
+oligodendrocyte <- c("MBP","MOG","OLIG1","OLIG2","SOX10")
+
+# doi: 10.3390/biom11091361
+astrocytes <- c("GFAP","S100B","AQP4","APOE", "SOX9")
+
+```
+
+
+Look at the expression of different marker lists
+```{r}
+# we want to use the total RNA not just the genes that are integrated
+# change the default assay
+DefaultAssay(integrated_seurate) <- "RNA"
+# we need to scale the RNA data
+integrated_seurate <- ScaleData(integrated_seurate)
+DoHeatmap(integrated_seurate, features = microglia, group.by = "integrated_snn_res.0.4")
+DotPlot(integrated_seurate, features = microglia, group.by = "integrated_snn_res.0.4") + RotatedAxis()
+Idents(integrated_seurate) <- "integrated_snn_res.0.4"
+FeaturePlot(integrated_seurate, features = microglia, label = TRUE)
+
+```
+Cluster 0 has some microglial markers and cluster 2 has lots of microglia markers.
+
+
+```{r}
+# oligodendrocytes
+DoHeatmap(integrated_seurate, features = oligodendrocyte, group.by = "integrated_snn_res.0.4")
+DotPlot(integrated_seurate, features = oligodendrocyte, group.by = "integrated_snn_res.0.4") + RotatedAxis()
+
+```
+Cluster 1,3,5 have mature oligodendrocyte markers and cluster 6 has strong oligo lineage markers 
+
+```{r}
+# astrocyte
+DoHeatmap(integrated_seurate, features = astrocytes, group.by = "integrated_snn_res.0.4")
+DotPlot(integrated_seurate, features = astrocytes, group.by = "integrated_snn_res.0.4") + RotatedAxis()
+
+```
+Cluster 5 is the best match for astrocyte markers
+
+Save the integrated object for next steps
+
+```{r}
+saveRDS(integrated_seurate, file = "integrated_seurat.Rds")
+
+```
+
+
+Automated cell type annotation
+
+Options 
+scCATCH - scoring
+CellAssign Bayesian
+ClustifyR correlation multiple methods
+Garnett elastic net regression
+scPred SVM
+scClassify R weighted kNN https://doi.org/10.15252/msb.20199389
+
+
+
+scClassify 
+https://sydneybiox.github.io/scClassify/articles/scClassify.html
+
+```{r}
+
+# we need to create the reference matrices
+#matrices where each row is a gene and each column a cell for a reference dataset and a query dataset
+
+# refrence data
+# we have the data prepared as a Seurat object
+
+ref <- readRDS("data/Karolinski_DevForebrain_downsample_Level1.RDS",sep = "")
+ref
+
+#check the meta data
+colnames(ref@meta.data)
+
+unique(ref$Clusters)
+unique(ref$Level1)
+unique(ref$Celltypes)
+
+# make a new meta data with fewer cell types.
+
+
+
+```
+The labelled cell types are in WGCNAcluster but there are too many to work well as a reference matrix.  scClassify suggests recommends to start with fewer cell types.
+
+
+We need to make the reference and query objects into a "dgCMatrix" object
+
+```{r}
+# load the library
+#library("Seurat")
+#library("scClassify")
+#ibrary(SingleCellExperiment)
+#library("Matrix")
+
+# make a dfCMatrix from Seurat object to use in scClassify
+
+dgCMat_ref <- GetAssayData(ref)
+# get the cell type data
+Idents(ref) <- "Celltypes"
+ref_celltypes <- Idents(ref)
+unique(ref_celltypes)
+
+
+# convert the integrated clustered object into dgCMatrix
+DefaultAssay(integrated_seurate) <- "RNA"
+dgCMat_query <- GetAssayData(integrated_seurate)
+Idents(integrated_seurate) <- "Original_clusterID"
+query_celltypes <- Idents(integrated_seurate)
+
+# check the objects
+dim(dgCMat_ref)
+dim(dgCMat_query)
+
+class(dgCMat_ref)
+class(dgCMat_query)
+
+```
+
+See the original cell type annotations
+```{r}
+table(ref_celltypes)
+table(query_celltypes)
+
+length(ref_celltypes)
+length(query_celltypes)
+
+```
+
+
+We can now perform non-ensemble scClassify
+
+```{r}
+scClassify_res <- scClassify(exprsMat_train = dgCMat_ref,
+                             cellTypes_train = ref_celltypes,
+                             exprsMat_test = dgCMat_query,
+                             cellTypes_test = query_celltypes,
+                             tree = "HOPACH",
+                             algorithm = "WKNN",
+                             selectFeatures = c("limma"),
+                             similarity = c("pearson"),
+                             returnList = FALSE,
+                             verbose = FALSE)
+```
+
+We can check the cell type tree generated by the reference data:
+
+```{r}
+scClassify_res$trainRes
+plotCellTypeTree(cellTypeTree(scClassify_res$trainRes))
+
+```
+
+Check the predictions
+```{r}
+
+table(scClassify_res$testRes$test$pearson_WKNN_limma$predRes,query_celltypes)
+
+
+
+```
+
+We want to predict cluster labels
+
+```{r}
+
+# we need to make the test meta data into the cluster ids 
+Idents(integrated_seurate) <- "integrated_snn_res.0.4"
+query_clusters <- Idents(integrated_seurate)
+
+
+scClassify_res <- scClassify(exprsMat_train = dgCMat_ref,
+                             cellTypes_train = ref_celltypes,
+                             exprsMat_test = dgCMat_query,
+                             cellTypes_test = query_clusters,
+                             tree = "HOPACH",
+                             algorithm = "WKNN",
+                             selectFeatures = c("limma"),
+                             similarity = c("pearson"),
+                             returnList = FALSE,
+                             verbose = FALSE)
+```
+
+
+See the cell type predictions by cluster
+
+```{r}
+
+table(scClassify_res$testRes$test$pearson_WKNN_limma$predRes,query_clusters)
+
+
+```
+
+Check another reference set
+
+```{r}
+# refrence data
+# we have the data prepared as a Seurat object
+
+ref2 <- readRDS("data/Nowakowski_dev_cortext.RDS",sep = "")
+ref2
+
+#check the meta data
+colnames(ref2@meta.data)
+
+#make the reference matrix and reference cell types 
+
+
+dgCMat_ref2 <- GetAssayData(ref2)
+# get the cell type data
+Idents(ref2) <- "Celltypes"
+ref_celltypes2 <- Idents(ref2)
+unique(ref_celltypes2)
+
+# check the object
+dim(dgCMat_ref2)
+
+
+class(dgCMat_ref2)
+
+
+
+```
+
+```{r}
+# predict the cluster cell types from the second reference
+scClassify_res <- scClassify(exprsMat_train = dgCMat_ref2,
+                             cellTypes_train = ref_celltypes2,
+                             exprsMat_test = dgCMat_query,
+                             cellTypes_test = query_clusters,
+                             tree = "HOPACH",
+                             algorithm = "WKNN",
+                             selectFeatures = c("limma"),
+                             similarity = c("pearson"),
+                             returnList = FALSE,
+                             verbose = FALSE)
+
+```
+
+

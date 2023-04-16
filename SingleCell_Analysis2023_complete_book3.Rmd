@@ -1,0 +1,122 @@
+---
+title: "Single Cell Analysis Workshop book 3"
+output:
+  html_document:
+    df_print: paged
+---
+
+Here we will compare the clusters in our dataset to clusters defined by other researchers in a published datasets. Unlike methods like scClassify, MetaNeighbor does not return a label for each cell, but an overall assessment or the correspondence between pairs of clusters. We will follow this protocol: <https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8826496/> (Procedure 2)
+
+Load required libraries and set base path
+
+```{r}
+  
+library(tidyverse)
+library(Seurat)
+library(SingleCellExperiment)
+library(MetaNeighbor)
+library(anndata)
+library(SeuratDisk)
+library(Matrix)
+
+base_path <- "C:/Users/Home/Documents/GitHub/SingleCell_Workshop/"
+
+```
+
+Read in and properly format the data for the Lister lab. This is an example of using data in h5ad format with Seurat.
+
+```{r}
+
+#Load as anndata, and look at the object
+lister_data <- read_h5ad(paste0(base_path,                      
+                                "data/ListerLab/Processed_data_RNA-all_full-counts-and-downsampled-CPM.h5ad"))
+lister_data
+
+#Convert the basics to Seurat format, look at the object
+lister_data <- CreateSeuratObject(counts = t(lister_data$X), meta.data = lister_data$obs)
+lister_data
+
+#Look at the major cell types and clusters, also distribution of genes and UMIs
+lister_data$cell_type %>% table
+lister_data$major_clust %>% table
+VlnPlot(lister_data, features = c("nCount_RNA", "nFeature_RNA"))
+lister_data$nCount_RNA %>% summary
+lister_data$nFeature_RNA %>% summary
+
+```
+
+Now we will train some classifiers using this object as the reference, but first we will do some pre-processing. 
+
+First we wiill build the classifier suing all the cells, and then we will re-run the analysis using only the non-neuronal cells. 
+
+```{r}
+
+#Normalize, find variable features, convert to SingleCellExperiment and subset to only the variable features 
+lister_data <- subset(lister_data, cell_type == "Non-Neu")
+lister_data <- NormalizeData(lister_data, normalization.method = "LogNormalize", scale.factor = 10000)
+lister_data <- FindVariableFeatures(lister_data, selection.method = "vst", nfeatures = 3000)
+var_features <- VariableFeatures(lister_data)
+lister_data <- as.SingleCellExperiment(lister_data)
+lister_data <- lister_data[var_features,]
+lister_data
+```
+
+Time to train the model!
+
+```{r}
+
+pretrained_model_major_cluster = MetaNeighbor::trainModel(
+ var_genes = rownames(lister_data),
+ dat = lister_data,
+ study_id = rep("Lister", dim(lister_data)[2]),
+ cell_type = lister_data$major_clust
+)
+
+
+```
+
+Remove the Lister lab object, and load our integrated Seurat object
+
+```{r}
+rm(lister_data)
+integrated_seurat <- readRDS(paste0(base_path, "integrated_seurat.Rds"))
+integrated_seurat <- as.SingleCellExperiment(integrated_seurat)
+
+```
+
+Classify using the major clusters and plot results
+
+```{r}
+#One versus all
+aurocs = MetaNeighborUS(
+ trained_model = pretrained_model_major_cluster, dat = integrated_seurat,
+ study_id = rep("integrated", dim(integrated_seurat)[2]), 
+ cell_type = integrated_seurat$integrated_snn_res.1.5,
+ fast_version = TRUE
+)
+tryCatch({plotHeatmapPretrained(aurocs, margins = c(5,5))}, error = function(error_condition) {})
+```
+
+```{r}
+
+#One versus best
+best_hits = MetaNeighborUS(
+ trained_model = pretrained_model_major_cluster, dat = integrated_seurat,
+ study_id = rep("integrated", dim(integrated_seurat)[2]), 
+ cell_type = integrated_seurat$integrated_snn_res.1.5,
+ one_vs_best = TRUE,
+ fast_version = TRUE
+)
+tryCatch({plotHeatmapPretrained(best_hits, margins = c(5,5))}, 
+         error = function(error_condition) {})
+
+```
+
+Do some house-keeping
+
+```{r}
+print(summary(warnings()))
+sessionInfo()
+Sys.time()
+
+```

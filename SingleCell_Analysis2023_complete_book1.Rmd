@@ -1,6 +1,8 @@
 ---
 title: "SingleCellAnalysisWorkshop_2023 Book1"
-output: html_notebook
+output:
+  html_document:
+    df_print: paged
 ---
 
 # Single Cell Analysis in R 2023 Notebook 1
@@ -36,9 +38,9 @@ Load the data: Starting with the adolescent data.
 # load data
 
 # insert the pathway to the location of the data
-data_path <- "/Users/rhalenathomas/Documents/scRNAclubMcGill/workshop2023/data/Adolescent_14_YO_raw_feature_bc_matrix"
+setwd <- "C:/Users/Home/Documents/GitHub/SingleCell_Workshop/"
 
-adolescent_data <- Read10X(data.dir = data_path, 
+adolescent_data <- Read10X("data/Adolescent_14_YO_raw_feature_bc_matrix/", 
                       strip.suffix = TRUE )
 
 #Look at the dimensions of the matrix
@@ -128,9 +130,7 @@ Repeat all these steps with the adult data.
 #You would decide the cutoff based on what works best across your samples. 
 #Can be left as an exercise i.e. no code provided until after the workshop or code provided in a different file
 
-data_path2 <- "/Users/rhalenathomas/Documents/scRNAclubMcGill/workshop2023/data/Adult_41_YO_raw_feature_bc_matrix"
-
-adult_data <- Read10X(data.dir = data_path2, 
+adult_data <- Read10X(data.dir = "data/Adult_41_YO_raw_feature_bc_matrix/", 
                     strip.suffix = TRUE)
 dim(adult_data)
 adult_data[1:5, 1:5]
@@ -165,8 +165,8 @@ The cells have previously been annotated - we will add in those annotations
 
 ```{r}
 # input file path
-input_path <- "/Users/rhalenathomas/Documents/scRNAclubMcGill/workshop2023/drive-download-20230406T132728Z-001/"
-input_file <- paste(input_path,"HA799_14YO_metadata.csv",sep="")
+
+input_file <- paste("data/HA799_14YO_metadata.csv",sep="")
 
 #Read in metadata file with original cluster info
 adolescent_sample_clusters <- read_csv(file = input_file)
@@ -212,8 +212,7 @@ rm(adolescent_data, adolescent_sample_metadata, adolescent_sample_clusters)
 Repeat adding meta data for the adult object
 ```{r}
 #Repeat the process of adding metadata for the adult sample
-input_path <- "/Users/rhalenathomas/Documents/scRNAclubMcGill/workshop2023/drive-download-20230406T132728Z-001/"
-input_file <- paste(input_path,"HA801_41YO_metadata.csv",sep="")
+input_file <- paste("data/HA801_41YO_metadata.csv",sep="")
 
 adult_sample_metadata <- tibble(CellName = colnames(adult_data_seurat), 
                                 age = rep(41, dim(adult_data_seurat)[2]))
@@ -463,10 +462,9 @@ Remove doublets
 Save the data objects for later
 
 ```{r}
-output_path <- "/Users/rhalenathomas/Documents/scRNAclubMcGill/workshop2023/"
 
-saveRDS(adolescent_data_seurat, paste(output_path,"adolsecentSeurate.RDS"))
-saveRDS(adult_data_seurat, paste(output_path,"adultSeurate.RDS"))
+saveRDS(adolescent_data_seurat, "adolsecentSeurate.Rds")
+saveRDS(adult_data_seurat, "adultSeurate.Rds")
 
 ```
 
