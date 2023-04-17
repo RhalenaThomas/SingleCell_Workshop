@@ -19,12 +19,13 @@ Running
 
 
 ```{r}
+Sys.time()
 # load libraries
 library(Seurat)
 library(tidyverse)
 
 
-setwd <- "C:/Users/Home/Documents/GitHub/SingleCell_Workshop/"
+setwd("C:/Users/Home/Documents/GitHub/SingleCell_Workshop/")
 
 # read in the data objects if starting from save files
 adolescent_data_seurat <- readRDS("adolsecentSeurate.Rds") %>%
@@ -517,6 +518,7 @@ scClassify_res <- scClassify(exprsMat_train = dgCMat_ref2,
                              similarity = c("pearson"),
                              returnList = FALSE,
                              verbose = FALSE)
+Sys.time()
 
 ```
 

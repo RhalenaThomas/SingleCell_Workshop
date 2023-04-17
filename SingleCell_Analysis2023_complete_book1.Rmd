@@ -26,6 +26,7 @@ Load your required libraries.
 You need to have these libraries installed. 
 
 ```{r}
+Sys.time()
 library(Seurat)
 library(tidyverse)
 library(DoubletFinder)
@@ -38,7 +39,7 @@ Load the data: Starting with the adolescent data.
 # load data
 
 # insert the pathway to the location of the data
-setwd <- "C:/Users/Home/Documents/GitHub/SingleCell_Workshop/"
+setwd("C:/Users/Home/Documents/GitHub/SingleCell_Workshop/")
 
 adolescent_data <- Read10X("data/Adolescent_14_YO_raw_feature_bc_matrix/", 
                       strip.suffix = TRUE )
@@ -54,13 +55,11 @@ colSums(adolescent_data) %>% summary
 #Look at the distribution of the number of genes per cell  
 colSums(adolescent_data > 0) %>% summary
 
-
 ```
 
 Remove barcodes with too few genes that could be empty droplets
 
 ```{r}
-
 #Remove barcodes with less than 200 genes detected (you can select a different value here)
 #You could use something more refined here, like EmptyDrops
 adolescent_data <- adolescent_data[, colSums(adolescent_data > 0)> 200]
@@ -76,7 +75,6 @@ Filter genes and create a Seurat object
 
 
 ```{r}
-
 #We might not want to include genes that occur in few cells are no cells.  Here we will filter out genes/transcripts that are in less than 3 cells. 
 
 #Make a Seurat object
@@ -84,7 +82,6 @@ Filter genes and create a Seurat object
 adolescent_data_seurat <- CreateSeuratObject(adolescent_data, project = "Adolescent", min.cells = 3)
 # look at the object dimensions
 adolescent_data_seurat
-
 
 ```
 
@@ -104,12 +101,9 @@ Data distribution
 # look at the distribution of total counts of RNA across cells
 adolescent_data_seurat$nCount_RNA %>% summary
 
-```
-
-```{r}
 # look at the distribution of unique RNA transcripts across cells
-adolescent_data_seurat$nFeature_RNA %>% summary
 
+adolescent_data_seurat$nFeature_RNA %>% summary
 ```
 
 
@@ -117,6 +111,7 @@ adolescent_data_seurat$nFeature_RNA %>% summary
 Visualize the distributions
 
 ```{r}
+
 VlnPlot(adolescent_data_seurat, features = c("nCount_RNA","nFeature_RNA"), pt.size = 0)
 
 ```
@@ -143,14 +138,11 @@ adult_data_seurat
 adult_data_seurat@meta.data %>% names
 adult_data_seurat$nCount_RNA %>% summary
 
-
-
 ```
 
 Now we want to add some sample meta data
 
 ```{r}
-
 #Make a tibble with the age info
 colnames(adolescent_data_seurat) %>% head
 adolescent_sample_metadata <- tibble(Cell_barcodes = colnames(adolescent_data_seurat), 
@@ -158,7 +150,6 @@ adolescent_sample_metadata <- tibble(Cell_barcodes = colnames(adolescent_data_se
 head(adolescent_sample_metadata)
 
 # this sample is from one brain and the age is 14 years so we will add that data for all the cells
-
 ```
 
 The cells have previously been annotated - we will add in those annotations
@@ -172,9 +163,6 @@ input_file <- paste("data/HA799_14YO_metadata.csv",sep="")
 adolescent_sample_clusters <- read_csv(file = input_file)
 head(adolescent_sample_clusters)
 
-
-
-
 ```
 
 Select the columns we need
@@ -184,7 +172,6 @@ adolescent_sample_clusters <- adolescent_sample_clusters %>% select(-c(2:7))
 colnames(adolescent_sample_clusters) <- c("Cell_barcodes","Original_clusterID")
 
 head(adolescent_sample_clusters)
-
 
 ```
 
@@ -206,7 +193,6 @@ adolescent_data_seurat@meta.data %>% head
 
 #Remove the original matrix, and other unnecessary objects to clean up space 
 rm(adolescent_data, adolescent_sample_metadata, adolescent_sample_clusters)
-
 ```
 
 Repeat adding meta data for the adult object
@@ -224,7 +210,6 @@ adult_data_seurat <- AddMetaData(adult_data_seurat, metadata = adult_sample_meta
 adult_data_seurat@meta.data %>% head
 # clean up extra files
 rm(adult_data, adult_sample_clusters, adult_sample_metadata)
-
 ```
 Filter out unwanted cells
 
@@ -241,9 +226,6 @@ Visualize the mitochondria
 ```{r}
 VlnPlot(adolescent_data_seurat, features = "percent.MT", pt.size = 0.001)
 
-```
-
-```{r}
 #Remove any cells with more than 20% mitochondrial counts
 adolescent_data_seurat <- subset(adolescent_data_seurat, percent.MT < 20)
 
@@ -252,7 +234,6 @@ adolescent_data_seurat <- subset(adolescent_data_seurat, nCount_RNA < 20000)
 
 # see the results
 VlnPlot(adolescent_data_seurat, features = c("percent.MT", "nCount_RNA", "nFeature_RNA"), pt.size = 0.001)
-
 
 ```
 
@@ -269,7 +250,6 @@ VlnPlot(adult_data_seurat, features = c("percent.MT", "nCount_RNA", "nFeature_RN
 adult_data_seurat <- subset(adult_data_seurat, nCount_RNA < 20000)
 VlnPlot(adult_data_seurat, features = c("percent.MT", "nCount_RNA", "nFeature_RNA"))
 
-
 ```
 
 Cell cycle scoring (optional)
@@ -279,7 +259,6 @@ VlnPlot(adolescent_data_seurat, features = c("S.Score", "G2M.Score"))
 
 adult_data_seurat <- CellCycleScoring(adult_data_seurat, g2m.features = cc.genes$g2m.genes, s.features = cc.genes$s.genes)
 VlnPlot(adult_data_seurat, features = c("S.Score", "G2M.Score"))
-
 ```
 Data normalization
 ```{r}
@@ -299,6 +278,7 @@ Finding Variable feature with two different methods
 adolescent_data_seurat <- FindVariableFeatures(adolescent_data_seurat, selection.method = "disp", nfeatures = 2000)
 VariableFeaturePlot(adolescent_data_seurat)
 disp_var  <- VariableFeatures(adolescent_data_seurat)
+
 
 ```
 
@@ -334,7 +314,6 @@ VariableFeatures(adult_data_seurat) %>% head(n = 20)
 Dimensionality reduction PCA and UMAP
 
 ```{r}
-
 #Scaling is recommended before PCA, as otherwise highly expressed genes will have a disproportionate effect
 adolescent_data_seurat <- ScaleData(adolescent_data_seurat, vars.to.regress = "percent.MT")
 adolescent_data_seurat@assays$RNA@scale.data %>% dim
@@ -350,12 +329,15 @@ PCAPlot(adolescent_data_seurat)
 #Assess how many PCs capture most of the information in the data 
 ElbowPlot(adolescent_data_seurat, ndims = 30)
 
-
 ```
 ```{r}
 # Jackstraw
 
 #Assess how many PCs capture most of the information in the data 
+adolescent_data_seurat <-JackStraw(adolescent_data_seurat, reduction = "pca",
+  dims = 30)
+adolescent_data_seurat <- ScoreJackStraw(adolescent_data_seurat, reduction = "pca", dims = 1:30)
+JackStrawPlot(adolescent_data_seurat, dims = 1:30)
 
 ```
 
@@ -374,6 +356,7 @@ UMAPPlot(adolescent_data_seurat)
 
 Repeat dimensional reduction with the adult sample
 ```{r}
+
 #Repeat dimensional reduction for adult sample, use 10 PCs for 
 adult_data_seurat <- ScaleData(adult_data_seurat, vars.to.regress = "percent.MT")
 adult_data_seurat <- RunPCA(adult_data_seurat, assay = "RNA", npcs = 30)
@@ -383,9 +366,10 @@ adult_data_seurat <- RunUMAP(adult_data_seurat, dims = 1:10)
 UMAPPlot(adult_data_seurat)
 
 ```
-Doublet removal
+Doublet identification
 
 ```{r}
+
 # Assess possible doublets  -----------------------------------------------
 #Using instructions here: https://github.com/chris-mcginnis-ucsf/
 
@@ -394,7 +378,7 @@ Doublet removal
 #First we test a number of pN (proportion of generated artificial doublets) and pK
 #We get different lists of probabilities of artifical nearest neighbors with these tested parameters
 #Also keep in mind the results are not deterministic (every run will give slightly different results)
-sweep.res.list_adolescent <- paramSweep_v3(adolescent_data_seurat, PCs = 1:10, sct = FALSE)
+sweep.res.list_adolescent <- paramSweep_v3(adolescent_data_seurat, PCs = 1:15, sct = FALSE)
 
 #We do not have the "ground truth" regarding doublets, such from from genotype data for pooled samples 
 #We sumamrize the performance of the range of pN=pK parameters we tested
@@ -403,61 +387,50 @@ sweep.stats_adolescent <- summarizeSweep(sweep.res.list_adolescent, GT = FALSE)
 #Here the "best" pK for the data is chosen based on a metric determined by the DoubletFinder developers
 #Which performs best in datasets where the ground truth is known
 bcmvn_adolescent <- find.pK(sweep.stats_adolescent)
-ggplot(bcmvn_adolescent, aes(x = pK, y = BCmetric, group = "Sweep")) + geom_point() + geom_line()
+ggplot(bcmvn_adolescent, aes(x = pK, y = BCmetric, group = "Sweep")) + geom_point() + geom_line() + 
+  theme(axis.text.x = element_text(angle = 90))
 
 #We will pick pK = 0.29
 #We are not going to use our clustering information to estimate "homotypic" doublets
 #We are simply going to use an expected doublet formation rate of 7.5%
 nExp_poi <- round(0.075*nrow(adolescent_data_seurat@meta.data))
-adolescent_data_seurat <- doubletFinder_v3(adolescent_data_seurat, PCs = 1:10, pN = 0.25, pK = 0.29, nExp = nExp_poi, reuse.pANN = FALSE, sct = FALSE)
+adolescent_data_seurat <- doubletFinder_v3(adolescent_data_seurat, PCs = 1:15, pN = 0.25, pK = 0.09, nExp = nExp_poi, reuse.pANN = FALSE, sct = FALSE)
 
 #Here we update the Seurat object version just in case the one returned by DoubletFinder is an older version
 adolescent_data_seurat <- UpdateSeuratObject(adolescent_data_seurat)
 
 #Visualize and assess the cells called as probable doublets
-UMAPPlot(adolescent_data_seurat, group.by = "DF.classifications_0.25_0.29_533")
+UMAPPlot(adolescent_data_seurat, group.by = "DF.classifications_0.25_0.09_533")
 
 # table of doublets and signlets
-adolescent_data_seurat$DF.classifications_0.25_0.29_533 %>% table
+adolescent_data_seurat$DF.classifications_0.25_0.09_533 %>% table
 
 # visualize the features in doublets and singlets
-VlnPlot(adolescent_data_seurat, features = c("nCount_RNA", "nFeature_RNA", "percent.MT", "pANN_0.25_0.29_533"), 
-        group.by = "DF.classifications_0.25_0.29_533", pt.size = 0.001)
+VlnPlot(adolescent_data_seurat, features = c("nCount_RNA", "nFeature_RNA", "percent.MT", "pANN_0.25_0.09_533"), 
+        group.by = "DF.classifications_0.25_0.09_533", pt.size = 0.001)
 
 ```
 
 Repeat doublet detection in adult sample
 
 ```{r}
+
 #Repeat the above analysis with the adult sample
 sweep.res.list_adult <- paramSweep_v3(adult_data_seurat, PCs = 1:10, sct = FALSE)
 sweep.stats_adult <- summarizeSweep(sweep.res.list_adult, GT = FALSE)
 bcmvn_adult <- find.pK(sweep.stats_adult)
-ggplot(bcmvn_adult, aes(x = pK, y = BCmetric, group = "Sweep")) + geom_point() + geom_line()
+ggplot(bcmvn_adult, aes(x = pK, y = BCmetric, group = "Sweep")) + geom_point() + geom_line() +
+  theme(axis.text.x = element_text(angle = 90))
 nExp_poi <- round(0.075*nrow(adult_data_seurat@meta.data))
-adult_data_seurat <- doubletFinder_v3(adult_data_seurat, PCs = 1:10, pN = 0.25, pK = 0.08, nExp = nExp_poi, reuse.pANN = FALSE, sct = FALSE)
+adult_data_seurat <- doubletFinder_v3(adult_data_seurat, PCs = 1:10, pN = 0.25, pK = 0.17, nExp = nExp_poi, reuse.pANN = FALSE, sct = FALSE)
 adult_data_seurat <- UpdateSeuratObject(adult_data_seurat)
 
-UMAPPlot(adult_data_seurat, group.by = "DF.classifications_0.25_0.08_146")
-adult_data_seurat$DF.classifications_0.25_0.08_146 %>% table
-VlnPlot(adult_data_seurat, features = c("nCount_RNA", "nFeature_RNA", "percent.MT", "pANN_0.25_0.08_146"), 
-        group.by = "DF.classifications_0.25_0.08_146", pt.size = 0.001)
+UMAPPlot(adult_data_seurat, group.by = "DF.classifications_0.25_0.17_146")
+adult_data_seurat$DF.classifications_0.25_0.17_146 %>% table
+VlnPlot(adult_data_seurat, features = c("nCount_RNA", "nFeature_RNA", "percent.MT", "pANN_0.25_0.187_146"), 
+        group.by = "DF.classifications_0.25_0.17_146", pt.size = 0.001)
 
 ```
-
-Remove doublets
-
-```{r}
-# adolescent
-
-```
-
-```{r}
-# adult
-
-```
-
-
 
 Save the data objects for later
 
@@ -465,6 +438,7 @@ Save the data objects for later
 
 saveRDS(adolescent_data_seurat, "adolsecentSeurate.Rds")
 saveRDS(adult_data_seurat, "adultSeurate.Rds")
+Sys.time()
 
 ```
 

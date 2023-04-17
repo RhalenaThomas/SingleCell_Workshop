@@ -5,12 +5,14 @@ output:
     df_print: paged
 ---
 
+# Single Cell Analysis Workshop book 3
+
 Here we will compare the clusters in our dataset to clusters defined by other researchers in a published datasets. Unlike methods like scClassify, MetaNeighbor does not return a label for each cell, but an overall assessment or the correspondence between pairs of clusters. We will follow this protocol: <https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8826496/> (Procedure 2)
 
 Load required libraries and set base path
 
 ```{r}
-  
+Sys.time()  
 library(tidyverse)
 library(Seurat)
 library(SingleCellExperiment)
@@ -19,7 +21,7 @@ library(anndata)
 library(SeuratDisk)
 library(Matrix)
 
-base_path <- "C:/Users/Home/Documents/GitHub/SingleCell_Workshop/"
+setwd("C:/Users/Home/Documents/GitHub/SingleCell_Workshop/")
 
 ```
 
@@ -28,8 +30,7 @@ Read in and properly format the data for the Lister lab. This is an example of u
 ```{r}
 
 #Load as anndata, and look at the object
-lister_data <- read_h5ad(paste0(base_path,                      
-                                "data/ListerLab/Processed_data_RNA-all_full-counts-and-downsampled-CPM.h5ad"))
+lister_data <- read_h5ad("data/ListerLab/Processed_data_RNA-all_full-counts-and-downsampled-CPM.h5ad")
 lister_data
 
 #Convert the basics to Seurat format, look at the object
@@ -39,7 +40,7 @@ lister_data
 #Look at the major cell types and clusters, also distribution of genes and UMIs
 lister_data$cell_type %>% table
 lister_data$major_clust %>% table
-VlnPlot(lister_data, features = c("nCount_RNA", "nFeature_RNA"))
+VlnPlot(lister_data, features = c("nCount_RNA", "nFeature_RNA"), pt.size = 0.001)
 lister_data$nCount_RNA %>% summary
 lister_data$nFeature_RNA %>% summary
 
@@ -79,7 +80,7 @@ Remove the Lister lab object, and load our integrated Seurat object
 
 ```{r}
 rm(lister_data)
-integrated_seurat <- readRDS(paste0(base_path, "integrated_seurat.Rds"))
+integrated_seurat <- readRDS("integrated_seurat.Rds")
 integrated_seurat <- as.SingleCellExperiment(integrated_seurat)
 
 ```
