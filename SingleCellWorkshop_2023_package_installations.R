@@ -4,7 +4,9 @@
 if (!require("tidyverse", quietly = TRUE))  install.packages("tidyverse")
 if (!require("reticulate", quietly = TRUE))  install.packages("reticulate")
 reticulate::install_miniconda(path = reticulate::miniconda_path(), update = TRUE, force = FALSE)
-if (!require("Seurat", quietly = TRUE))  install.packages("Seurat")
+#if (!require("Seurat", quietly = TRUE))  install.packages("Seurat")
+#Note: the following step may ask you to install addiitonal R tools. If prompted, proceed with the installation.
+if (!require("Seurat", quietly = TRUE)) remotes::install_version("Seurat", version = "4.3.0", repos = "http://cran.us.r-project.org")
 if (!require("clustree", quietly = TRUE))  install.packages("clustree")
 if (!require("devtools", quietly = TRUE))  install.packages("devtools")
 if (!require("enrichR", quietly = TRUE))  install.packages("enrichR")
