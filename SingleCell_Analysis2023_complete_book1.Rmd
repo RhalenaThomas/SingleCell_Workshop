@@ -189,6 +189,7 @@ adolescent_data_seurat@meta.data %>% head
 
 
 ```
+
 ```{r}
 
 #Remove the original matrix, and other unnecessary objects to clean up space 
@@ -261,6 +262,7 @@ adult_data_seurat <- CellCycleScoring(adult_data_seurat, g2m.features = cc.genes
 VlnPlot(adult_data_seurat, features = c("S.Score", "G2M.Score"))
 ```
 Data normalization
+
 ```{r}
 # Normalize data (log normalization) and select genes with variable expression across cells --------------------------------------
 
@@ -330,6 +332,7 @@ PCAPlot(adolescent_data_seurat)
 ElbowPlot(adolescent_data_seurat, ndims = 30)
 
 ```
+
 ```{r}
 # Jackstraw
 

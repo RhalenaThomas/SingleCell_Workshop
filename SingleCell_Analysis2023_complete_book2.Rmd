@@ -23,15 +23,22 @@ Sys.time()
 # load libraries
 library(Seurat)
 library(tidyverse)
+library(enrichR)
 
 
-setwd("C:/Users/Home/Documents/GitHub/SingleCell_Workshop/")
+# setwd only works inside the same code chunk
+# we can use the GUI to change the working directory for the rest of the workbook
+# Session < Set Working Directory < Choose Directory
+# 
+#setwd("C:/Users/Home/Documents/GitHub/SingleCell_Workshop/")
+# on mac
+setwd("/Users/rhalenathomas/Documents/scRNAclubMcGill/workshop2023/")
+# put the pathway to your files here
+
 
 # read in the data objects if starting from save files
-adolescent_data_seurat <- readRDS("adolsecentSeurate.Rds") %>%
-  RenameCells(add.cell.id = "Adol_")
-adult_data_seurat <- readRDS("adultSeurate.Rds") %>%
-  RenameCells(add.cell.id = "Adult_")
+adolescent_data_seurat <- readRDS(" adolsecentSeurate.RDS") %>% RenameCells(add.cell.id = "Adol_")
+adult_data_seurat <- readRDS(" adultSeurate.RDS") %>% RenameCells(add.cell.id = "Adult_")
 
 ```
 
@@ -65,6 +72,17 @@ integrated_seurate <- IntegrateData(anchorset = int.anchors, dims = 1:50)
 
 ```
 
+Save the integrated object or read in the Integrated object for the next step.
+
+```{r}
+# remove # comment from the code you want to run
+#saveRDS(integrated_seurate,"IntegratedSeurat.RDS")
+#integrated_seurate <- readRDS("IntegratedSeurat.RDS")
+
+```
+
+
+
 Perform dimensional reduction PCA and UMAP on the merge and intergrated objects
 
 ```{r}
@@ -80,6 +98,7 @@ merge_seurate <- RunUMAP(merge_seurate, reduction = "pca", dims = 1:30)
 
 ```
 
+
 Repeat PCA and UMAP for the integrated object
 ```{r}
 Idents(integrated_seurate) <- "integrated"
@@ -89,6 +108,15 @@ integrated_seurate <- RunPCA(integrated_seurate, npcs = 30, verbose = FALSE)
 integrated_seurate <- RunUMAP(integrated_seurate, reduction = "pca", dims = 1:30)
 
 ```
+
+Optional save the PCA and UMAP integrated object or read in the saved object
+```{r}
+# remove # comment from the code you want to run
+#saveRDS(integrated_seurate,"IntegratedSeuratGraphs.RDS")
+#integrated_seurate <- readRDS("IntegratedSeuratGraphs.RDS")
+
+```
+
 
 Visualize the UMAPs comparing the merged and integrated objects
 ```{r}
@@ -103,8 +131,6 @@ p2
 
 ```
 We can see a large shift in the two populations when the data is integrated (harmonized).
-
-
 
 Cluster the integrated data
 
@@ -135,6 +161,14 @@ clustree(integrated_seurate, prefix = "integrated_snn_res.")
 
 ```
 
+Optional: save the clusters or read in the object with clusters
+```{r}
+# remove # comment from the code you want to run
+#saveRDS(integrated_seurate,"IntegratedSeuratClusters.RDS")
+#integrated_seurate <- readRDS("IntegratedSeuratClusters.RDS")
+
+```
+
 Visualize the UMAP of the different cluster resolutions
 ```{r}
 res <- c(0.05,0.25,0.4,0.5,0.6,1,1.5)
@@ -147,6 +181,7 @@ for(r in resolutions){
 
 
 ```
+
 Now we choose a resolution to annotate. We are expecting microglia, astrocytes, oligodendrocytes and OPCs. Resolution 0.4 looks like a good amount of clusters.
 
 
@@ -159,8 +194,17 @@ Cluster annotation
 Idents(integrated_seurate) <- "integrated_snn_res.0.4"
 ClusterMarkers <- FindAllMarkers(integrated_seurate, only.pos = TRUE)
 
+# optional: save the cluster markers
+write.csv(ClusterMarkers,"ClusterMarkers.csv")
 
 ```
+
+Optional: If cluster markers were run previously and saved or if they take too long to run, read in the csv
+```{r}
+ClusterMarkers <- read.csv("ClusterMarkers.csv")
+  
+```
+
 
 Lets look at the markers to see if they identify cell types
 
@@ -176,10 +220,6 @@ We can see cluster 1 and have a huge overlap. Cluster 5 and 6 are also overlappi
 We can look at the markers for each cluster using Gene set analysis or cell type libraries
 
 ```{r}
-
-library(devtools)
-#install_github("wjawaid/enrichR")
-library(enrichR)
 
 setEnrichrSite("Enrichr") # Human genes
 # list of all the databases
@@ -239,30 +279,38 @@ Cluster 2 is also immune cells, embryonic microglia.
 cluster3 <- checkCelltypes(cluster_num = 3)
 
 ```
+Cluster 3 is oligodendrocytes
 
 ```{r}
 # cluster 4
 cluster4 <- checkCelltypes(cluster_num = 4)
 ```
+Cluster 4 - immune cells
+
 
 ```{r}
 # cluster 5
 cluster5 <- checkCelltypes(cluster_num = 5)
 
 ```
+Cluster 5 is astrocytes
+
 
 ```{r}
 # cluster 6
+cluster6 <- checkCelltypes(cluster_num = 6)
 
 ```
+Cluster 6 is OPCs
 
 ```{r}
 # cluster 7
+cluster7 <- checkCelltypes(cluster_num = 7)
 
 ```
+Cluster 7 - monocytes or Tcells
 
-
-We can remove the lists of cell library outputs to clean up our work envirnment
+We can remove the lists of cell library outputs to clean up our work environment
 ```{r}
 rm(cluster0,cluster1,cluster2,cluster3,cluster4,cluster5,cluster6,cluster7)
 
@@ -521,5 +569,14 @@ scClassify_res <- scClassify(exprsMat_train = dgCMat_ref2,
 Sys.time()
 
 ```
+
+
+Now that we have the an different forms of information to annatote the cells we need to decide on the annotations to add, then add them into the data object.
+
+```{r}
+
+
+```
+
 
 
