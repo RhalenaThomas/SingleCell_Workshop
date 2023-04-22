@@ -439,8 +439,8 @@ Save the data objects for later
 
 ```{r}
 
-saveRDS(adolescent_data_seurat, "adolsecentSeurate.Rds")
-saveRDS(adult_data_seurat, "adultSeurate.Rds")
+saveRDS(adolescent_data_seurat, "adolsecentSeurat.Rds")
+saveRDS(adult_data_seurat, "adultSeurat.Rds")
 Sys.time()
 
 ```

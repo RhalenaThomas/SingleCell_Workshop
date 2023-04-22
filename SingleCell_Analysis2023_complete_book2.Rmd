@@ -24,7 +24,10 @@ Sys.time()
 library(Seurat)
 library(tidyverse)
 library(enrichR)
-
+library(ggplot2)
+library("scClassify")
+library(SingleCellExperiment)
+library("Matrix")
 
 # setwd only works inside the same code chunk
 # we can use the GUI to change the working directory for the rest of the workbook
@@ -32,13 +35,16 @@ library(enrichR)
 # 
 #setwd("C:/Users/Home/Documents/GitHub/SingleCell_Workshop/")
 # on mac
-setwd("/Users/rhalenathomas/Documents/scRNAclubMcGill/workshop2023/")
+setwd("/pathway/to/the/saved/files/")
 # put the pathway to your files here
 
 
 # read in the data objects if starting from save files
-adolescent_data_seurat <- readRDS(" adolsecentSeurate.RDS") %>% RenameCells(add.cell.id = "Adol_")
-adult_data_seurat <- readRDS(" adultSeurate.RDS") %>% RenameCells(add.cell.id = "Adult_")
+adolescent_data_seurat <- readRDS("adolsecentSeurat.Rds") %>% RenameCells(add.cell.id = "Adol_")
+
+adolescent_data_seurat <- readRSD()
+
+adult_data_seurat <- readRDS("adultSeurat.Rds") %>% RenameCells(add.cell.id = "Adult_")
 
 ```
 
@@ -46,17 +52,18 @@ adult_data_seurat <- readRDS(" adultSeurate.RDS") %>% RenameCells(add.cell.id = 
 Merge data objects
 ```{r}
 
-merge_seurate <- merge(adolescent_data_seurat,adult_data_seurat)
-merge_seurate
+merge_seurat <- merge(adolescent_data_seurat,adult_data_seurat)
+merge_seurat
 
-unique(merge_seurate$orig.ident)
+unique(merge_seurat$orig.ident)
 
 
 ```
+
 Integrate objects using the Seurat function
 ```{r}
 
-sample.list <- SplitObject(merge_seurate, split.by = "orig.ident")
+sample.list <- SplitObject(merge_seurat, split.by = "orig.ident")
 
 # We have already normalized and identified variable features in each sample
 # If we had not done so we can normalize here
@@ -67,17 +74,17 @@ sample.list <- SplitObject(merge_seurate, split.by = "orig.ident")
 
 # Now we find features that can act as anchors between the two samples
 int.anchors <- FindIntegrationAnchors(object.list = sample.list, dims = 1:50)
-integrated_seurate <- IntegrateData(anchorset = int.anchors, dims = 1:50)
+integrated_seurat <- IntegrateData(anchorset = int.anchors, dims = 1:50)
 
 
 ```
 
-Save the integrated object or read in the Integrated object for the next step.
+Optional: Save the integrated object or read in the Integrated object for the next step.
 
 ```{r}
 # remove # comment from the code you want to run
-#saveRDS(integrated_seurate,"IntegratedSeurat.RDS")
-#integrated_seurate <- readRDS("IntegratedSeurat.RDS")
+#saveRDS(integrated_seurat,"IntegratedSeurat.RDS")
+#integrated_seurat <- readRDS("IntegratedSeurat.RDS")
 
 ```
 
@@ -86,14 +93,14 @@ Save the integrated object or read in the Integrated object for the next step.
 Perform dimensional reduction PCA and UMAP on the merge and intergrated objects
 
 ```{r}
-# merge object
-DefaultAssay(merge_seurate) <- "RNA"
+# first the merge object
+DefaultAssay(merge_seurat) <- "RNA"
 
-merge_seurate <- ScaleData(merge_seurate, verbose = FALSE)
+merge_seurat <- ScaleData(merge_seurat, verbose = FALSE)
 # in the merge data set we sill need features for the PCA input
-merge_seurate <- FindVariableFeatures(merge_seurate, selection.method = "vst")
-merge_seurate <- RunPCA(merge_seurate, npcs = 30, verbose = FALSE)
-merge_seurate <- RunUMAP(merge_seurate, reduction = "pca", dims = 1:30)
+merge_seurat <- FindVariableFeatures(merge_seurat, selection.method = "vst")
+merge_seurat <- RunPCA(merge_seurat, npcs = 30, verbose = FALSE)
+merge_seurat <- RunUMAP(merge_seurat, reduction = "pca", dims = 1:30)
 
 
 ```
@@ -101,29 +108,29 @@ merge_seurate <- RunUMAP(merge_seurate, reduction = "pca", dims = 1:30)
 
 Repeat PCA and UMAP for the integrated object
 ```{r}
-Idents(integrated_seurate) <- "integrated"
-integrated_seurate <- ScaleData(integrated_seurate, verbose = FALSE)
-# in the integrated features will be the pca input
-integrated_seurate <- RunPCA(integrated_seurate, npcs = 30, verbose = FALSE)
-integrated_seurate <- RunUMAP(integrated_seurate, reduction = "pca", dims = 1:30)
+Idents(integrated_seurat) <- "integrated"
+integrated_seurat <- ScaleData(integrated_seurat, verbose = FALSE)
+# only the integrated features will be the pca input
+integrated_seurat <- RunPCA(integrated_seurat, npcs = 30, verbose = FALSE)
+integrated_seurat <- RunUMAP(integrated_seurat, reduction = "pca", dims = 1:30)
 
 ```
 
-Optional save the PCA and UMAP integrated object or read in the saved object
+Optional: save the PCA and UMAP integrated object or read in the saved object
 ```{r}
 # remove # comment from the code you want to run
-#saveRDS(integrated_seurate,"IntegratedSeuratGraphs.RDS")
-#integrated_seurate <- readRDS("IntegratedSeuratGraphs.RDS")
+#saveRDS(integrated_seurat,"IntegratedSeuratGraphs.RDS")
+#integrated_seurat <- readRDS("IntegratedSeuratGraphs.RDS")
 
 ```
 
 
 Visualize the UMAPs comparing the merged and integrated objects
 ```{r}
-#library(ggplot2)
 
-p1 <- DimPlot(merge_seurate, group.by = "orig.ident") + ggtitle("Merge")
-p2 <- DimPlot(integrated_seurate, group.by = "orig.ident") + ggtitle("Integrated")
+
+p1 <- DimPlot(merge_seurat, group.by = "orig.ident") + ggtitle("Merge")
+p2 <- DimPlot(integrated_seurat, group.by = "orig.ident") + ggtitle("Integrated")
 
 p1
 p2
@@ -136,8 +143,8 @@ Cluster the integrated data
 
 ```{r}
 # see the importance of the pca components
-ElbowPlot(integrated_seurate, ndims=30)
-integrated_seurate
+ElbowPlot(integrated_seurat, ndims=30)
+integrated_seurat
 
 ```
 Choose 15 PCs
@@ -149,23 +156,23 @@ sqrt(9044)
 
 # the K parameter changes the size of clusters by changing the starting nodes input into the Louvain network
 
-integrated_seurate <- FindNeighbors(integrated_seurate, dims = 1:15, k.param = 95)
+integrated_seurat <- FindNeighbors(integrated_seurat, dims = 1:15, k.param = 95)
 # the number of clusters is dependent on the resolution a number from 0-2. 
 # Higher values make more clusters
 # we include 
-integrated_seurate <- FindClusters(integrated_seurate, resolution = c(0,0.05,0.25,0.4,0.5,0.6,1,1.5) )
+integrated_seurat <- FindClusters(integrated_seurat, resolution = c(0,0.05,0.25,0.4,0.5,0.6,1,1.5) )
 
 # we can visualize which cells are grouped together at different resolutions using clustree
 library(clustree)
-clustree(integrated_seurate, prefix = "integrated_snn_res.")
+clustree(integrated_seurat, prefix = "integrated_snn_res.")
 
 ```
 
 Optional: save the clusters or read in the object with clusters
 ```{r}
 # remove # comment from the code you want to run
-#saveRDS(integrated_seurate,"IntegratedSeuratClusters.RDS")
-#integrated_seurate <- readRDS("IntegratedSeuratClusters.RDS")
+#saveRDS(integrated_seurat,"IntegratedSeuratClusters.RDS")
+#integrated_seurat <- readRDS("IntegratedSeuratClusters.RDS")
 
 ```
 
@@ -176,7 +183,7 @@ resolutions <- paste("integrated_snn_res.", res, sep="")
 resolutions
 
 for(r in resolutions){
-  print(DimPlot(integrated_seurate, group.by = r))
+  print(DimPlot(integrated_seurat, group.by = r))
 }
 
 
@@ -187,12 +194,13 @@ Now we choose a resolution to annotate. We are expecting microglia, astrocytes, 
 
 Cluster annotation
 
+
 ```{r}
 # find cluster markers
 
 # we need to select the level of clustering that we want to annotate
-Idents(integrated_seurate) <- "integrated_snn_res.0.4"
-ClusterMarkers <- FindAllMarkers(integrated_seurate, only.pos = TRUE)
+Idents(integrated_seurat) <- "integrated_snn_res.0.4"
+ClusterMarkers <- FindAllMarkers(integrated_seurat, only.pos = TRUE)
 
 # optional: save the cluster markers
 write.csv(ClusterMarkers,"ClusterMarkers.csv")
@@ -211,7 +219,7 @@ Lets look at the markers to see if they identify cell types
 ```{r}
 head(ClusterMarkers)
 top5 <- ClusterMarkers %>% group_by(cluster) %>% top_n(n=5, wt =avg_log2FC)
-DoHeatmap(integrated_seurate, features = top5$gene, size = 3, angle = 90, group.by = "integrated_snn_res.0.4")
+DoHeatmap(integrated_seurat, features = top5$gene, size = 3, angle = 90, group.by = "integrated_snn_res.0.4")
 
 ```
 We can see cluster 1 and have a huge overlap. Cluster 5 and 6 are also overlapping.
@@ -374,28 +382,18 @@ saveRDS(integrated_seurate, file = "integrated_seurat.Rds")
 
 ```
 
-
 Automated cell type annotation
 
-Options 
-scCATCH - scoring
-CellAssign Bayesian
-ClustifyR correlation multiple methods
-Garnett elastic net regression
-scPred SVM
 scClassify R weighted kNN https://doi.org/10.15252/msb.20199389
 
-
-
-scClassify 
 https://sydneybiox.github.io/scClassify/articles/scClassify.html
 
 ```{r}
 
 # we need to create the reference matrices
-#matrices where each row is a gene and each column a cell for a reference dataset and a query dataset
+#matrices where each row is a gene and each column a cell for a reference dataset and a query data set
 
-# refrence data
+# reference data
 # we have the data prepared as a Seurat object
 
 ref <- readRDS("data/Karolinski_DevForebrain_downsample_Level1.RDS",sep = "")
@@ -419,11 +417,7 @@ The labelled cell types are in WGCNAcluster but there are too many to work well 
 We need to make the reference and query objects into a "dgCMatrix" object
 
 ```{r}
-# load the library
-#library("Seurat")
-#library("scClassify")
-#ibrary(SingleCellExperiment)
-#library("Matrix")
+
 
 # make a dfCMatrix from Seurat object to use in scClassify
 
@@ -435,10 +429,10 @@ unique(ref_celltypes)
 
 
 # convert the integrated clustered object into dgCMatrix
-DefaultAssay(integrated_seurate) <- "RNA"
-dgCMat_query <- GetAssayData(integrated_seurate)
-Idents(integrated_seurate) <- "Original_clusterID"
-query_celltypes <- Idents(integrated_seurate)
+DefaultAssay(integrated_seurat) <- "RNA"
+dgCMat_query <- GetAssayData(integrated_seurat)
+Idents(integrated_seurat) <- "Original_clusterID"
+query_celltypes <- Idents(integrated_seurat)
 
 # check the objects
 dim(dgCMat_ref)
@@ -498,7 +492,7 @@ We want to predict cluster labels
 
 # we need to make the test meta data into the cluster ids 
 Idents(integrated_seurate) <- "integrated_snn_res.0.4"
-query_clusters <- Idents(integrated_seurate)
+query_clusters <- Idents(integrated_seurat)
 
 
 scClassify_res <- scClassify(exprsMat_train = dgCMat_ref,
@@ -571,10 +565,29 @@ Sys.time()
 ```
 
 
-Now that we have the an different forms of information to annatote the cells we need to decide on the annotations to add, then add them into the data object.
+Predict with multiple data sets at once
 
 ```{r}
 
+
+```
+
+
+
+Now that we have the an different forms of information to annotate the cells we need to decide on the annotations to add, then add them into the data object.
+
+```{r}
+# we need to set the identity to rename
+Idents(integrated_seurat) <- "integrated_snn_res.0.4"
+
+# we need to make a vector of the cell type in the same order - in the cluster order
+
+cell_types <- c("microglia","oligodendrocytes_1","embyonic_microglia",
+                "oligodendrocyte_2","immune", "astrocytes","OPC","monocytes")
+  
+names(cell_types) <- levels(integrated_seurat)
+integrated_seurat <- RenameIdents(integrated_seurat, cell_types)
+integrated_seurat <- AddMetaData(object=integrated_seurat, metadata=Idents(integrated_seurat), col.name = "CellTypes")
 
 ```
 
