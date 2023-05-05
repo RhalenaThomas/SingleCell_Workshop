@@ -564,16 +564,6 @@ Sys.time()
 
 ```
 
-
-Predict with multiple data sets at once
-
-```{r}
-
-
-```
-
-
-
 Now that we have the an different forms of information to annotate the cells we need to decide on the annotations to add, then add them into the data object.
 
 ```{r}
