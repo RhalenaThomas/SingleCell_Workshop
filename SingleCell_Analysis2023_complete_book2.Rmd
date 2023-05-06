@@ -84,7 +84,7 @@ Optional: Save the integrated object or read in the Integrated object for the ne
 ```{r}
 # remove # comment from the code you want to run
 #saveRDS(integrated_seurat,"IntegratedSeurat.RDS")
-#integrated_seurat <- readRDS("IntegratedSeurat.RDS")
+integrated_seurat <- readRDS("IntegratedSeurat.RDS")
 
 ```
 
@@ -171,7 +171,7 @@ clustree(integrated_seurat, prefix = "integrated_snn_res.")
 Optional: save the clusters or read in the object with clusters
 ```{r}
 # remove # comment from the code you want to run
-#saveRDS(integrated_seurat,"IntegratedSeuratClusters.RDS")
+saveRDS(integrated_seurat,"IntegratedSeuratClusters.RDS")
 #integrated_seurat <- readRDS("IntegratedSeuratClusters.RDS")
 
 ```
@@ -491,7 +491,7 @@ We want to predict cluster labels
 ```{r}
 
 # we need to make the test meta data into the cluster ids 
-Idents(integrated_seurate) <- "integrated_snn_res.0.4"
+Idents(integrated_seurat) <- "integrated_snn_res.0.4"
 query_clusters <- Idents(integrated_seurat)
 
 
@@ -522,21 +522,28 @@ Check another reference set
 ```{r}
 # refrence data
 # we have the data prepared as a Seurat object
-
-ref2 <- readRDS("data/Nowakowski_dev_cortext.RDS",sep = "")
+path <- "/Users/rhalenathomas/Documents/Data/scRNAseq/PublicData"
+ref2 <- readRDS(paste(path,"/Nowakowski_dev_cortext.RDS",sep = ""))
 ref2
 
 #check the meta data
 colnames(ref2@meta.data)
-
+unique(ref2$Celltypes)
 #make the reference matrix and reference cell types 
 
 
 dgCMat_ref2 <- GetAssayData(ref2)
 # get the cell type data
 Idents(ref2) <- "Celltypes"
-ref_celltypes2 <- Idents(ref2)
+levels(ref2)
+
+ref_celltypes2 <- as.character(Idents(ref2))
+ref_celltypes2[is.na(ref_celltypes2)] <- "NA"
+
+
+
 unique(ref_celltypes2)
+
 
 # check the object
 dim(dgCMat_ref2)
@@ -564,7 +571,33 @@ Sys.time()
 
 ```
 
-Now that we have the an different forms of information to annotate the cells we need to decide on the annotations to add, then add them into the data object.
+See the tree of cell types from reference 2
+
+```{r}
+
+scClassify_res$trainRes
+plotCellTypeTree(cellTypeTree(scClassify_res$trainRes))
+
+
+```
+
+
+
+See the cell type predictions by cluster
+
+```{r}
+
+table(scClassify_res$testRes$test$pearson_WKNN_limma$predRes,query_clusters)
+
+
+```
+
+
+
+
+
+
+Now that we have the different forms of information to annotate the cells we need to decide on the annotations to add, then add them into the data object.
 
 ```{r}
 # we need to set the identity to rename
@@ -578,6 +611,8 @@ cell_types <- c("microglia","oligodendrocytes_1","embyonic_microglia",
 names(cell_types) <- levels(integrated_seurat)
 integrated_seurat <- RenameIdents(integrated_seurat, cell_types)
 integrated_seurat <- AddMetaData(object=integrated_seurat, metadata=Idents(integrated_seurat), col.name = "CellTypes")
+
+
 
 ```
 
