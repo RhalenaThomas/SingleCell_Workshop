@@ -3,7 +3,7 @@ title: "Single Cell Analysis Workshop book 3"
 output:
   html_document:
     df_print: paged
-    keep_md: yes
+    #keep_md: yes
 ---
 
 # Single Cell Analysis Workshop book 3
