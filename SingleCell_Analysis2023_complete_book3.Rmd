@@ -119,22 +119,25 @@ tryCatch({plotHeatmapPretrained(best_hits, margins = c(5,5))},
 
 ```
 
-Compare labels obtained with supervised classification of cells and unsupervised clustering
+Compare labels obtained with supervised classification of cells and unsupervised clustering, also between the two supervised clustering labels
 
 ```{r}
  integrated_seurat <- readRDS("integrated_seurat.Rds")
  plot1 <- PairWiseJaccardSetsHeatmap(Idents(integrated_seurat), integrated_seurat$Karolinski)
  adjustedRandIndex(Idents(integrated_seurat), integrated_seurat$Karolinski) %>% print
- plot1
+ #plot1
  plot2 <- PairWiseJaccardSetsHeatmap(Idents(integrated_seurat), integrated_seurat$Nowakowski)
  adjustedRandIndex(Idents(integrated_seurat), integrated_seurat$Nowakowski) %>% print
- plot2
+ #plot2
+ plot3 <- PairWiseJaccardSetsHeatmap(integrated_seurat$Karolinski, integrated_seurat$Nowakowski)
+ adjustedRandIndex(integrated_seurat$Karolinski, integrated_seurat$Nowakowski) %>% print
 ```
 
 ``` {r JaccardIndexPlots, dev = c("png")}
  #pdf(file = "C:/Users/Home/Documents/GitHub/SingleCell_Workshop/JaccardIndexPlots.pdf", onefile = TRUE)
   plot1
   plot2
+  plot3  
  #dev.off()
 
 ```
