@@ -3,6 +3,7 @@ title: "Single Cell Analysis Workshop book 3"
 output:
   html_document:
     df_print: paged
+    keep_md: yes
 ---
 
 # Single Cell Analysis Workshop book 3
@@ -20,6 +21,8 @@ library(MetaNeighbor)
 library(anndata)
 library(SeuratDisk)
 library(Matrix)
+library(scclusteval)
+library(mclust)
 
 setwd("C:/Users/Home/Documents/GitHub/SingleCell_Workshop/")
 
@@ -28,13 +31,16 @@ setwd("C:/Users/Home/Documents/GitHub/SingleCell_Workshop/")
 Read in and properly format the data for the Lister lab. This is an example of using data in h5ad format with Seurat.
 
 ```{r}
-
 #Load as anndata, and look at the object
 lister_data <- read_h5ad("data/ListerLab/Processed_data_RNA-all_full-counts-and-downsampled-CPM.h5ad")
 lister_data
 
 #Convert the basics to Seurat format, look at the object
 lister_data <- CreateSeuratObject(counts = t(lister_data$X), meta.data = lister_data$obs)
+```
+
+
+```{r}
 lister_data
 
 #Look at the major cell types and clusters, also distribution of genes and UMIs
@@ -110,6 +116,40 @@ best_hits = MetaNeighborUS(
 )
 tryCatch({plotHeatmapPretrained(best_hits, margins = c(5,5))}, 
          error = function(error_condition) {})
+
+```
+
+Compare labels obtained with supervised classification of cells and unsupervised clustering
+
+```{r}
+ integrated_seurat <- readRDS("integrated_seurat.Rds")
+ plot1 <- PairWiseJaccardSetsHeatmap(Idents(integrated_seurat), integrated_seurat$Karolinski)
+ adjustedRandIndex(Idents(integrated_seurat), integrated_seurat$Karolinski) %>% print
+ plot1
+ plot2 <- PairWiseJaccardSetsHeatmap(Idents(integrated_seurat), integrated_seurat$Nowakowski)
+ adjustedRandIndex(Idents(integrated_seurat), integrated_seurat$Nowakowski) %>% print
+ plot2
+```
+
+``` {r JaccardIndexPlots, dev = c("png")}
+ #pdf(file = "C:/Users/Home/Documents/GitHub/SingleCell_Workshop/JaccardIndexPlots.pdf", onefile = TRUE)
+  plot1
+  plot2
+ #dev.off()
+
+```
+Generate counts summed by or averaged by sample and cluster 
+
+```{r}
+
+Idents(integrated_seurat) <- paste(Idents(integrated_seurat), integrated_seurat$age, sep = ".")
+aggregated_seurat <- AggregateExpression(integrated_seurat, assays = "RNA", slot = "counts", group.by = )
+aggregated_seurat$RNA %>% head
+aggregated_seurat$RNA %>% colSums
+
+average_seurat <- AverageExpression(integrated_seurat, assays = "RNA", slot = "counts", group.by = )
+average_seurat$RNA %>% head
+average_seurat$RNA %>% colSums
 
 ```
 

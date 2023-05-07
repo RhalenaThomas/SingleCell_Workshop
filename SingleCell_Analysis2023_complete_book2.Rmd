@@ -35,14 +35,12 @@ library("Matrix")
 # 
 #setwd("C:/Users/Home/Documents/GitHub/SingleCell_Workshop/")
 # on mac
-setwd("/pathway/to/the/saved/files/")
+setwd("C:/Users/Home/Documents/GitHub/SingleCell_Workshop/")
 # put the pathway to your files here
 
 
 # read in the data objects if starting from save files
 adolescent_data_seurat <- readRDS("adolsecentSeurat.Rds") %>% RenameCells(add.cell.id = "Adol_")
-
-adolescent_data_seurat <- readRSD()
 
 adult_data_seurat <- readRDS("adultSeurat.Rds") %>% RenameCells(add.cell.id = "Adult_")
 
@@ -84,7 +82,7 @@ Optional: Save the integrated object or read in the Integrated object for the ne
 ```{r}
 # remove # comment from the code you want to run
 #saveRDS(integrated_seurat,"IntegratedSeurat.RDS")
-integrated_seurat <- readRDS("IntegratedSeurat.RDS")
+#integrated_seurat <- readRDS("IntegratedSeurat.RDS")
 
 ```
 
@@ -171,7 +169,7 @@ clustree(integrated_seurat, prefix = "integrated_snn_res.")
 Optional: save the clusters or read in the object with clusters
 ```{r}
 # remove # comment from the code you want to run
-saveRDS(integrated_seurat,"IntegratedSeuratClusters.RDS")
+#saveRDS(integrated_seurat,"IntegratedSeuratClusters.RDS")
 #integrated_seurat <- readRDS("IntegratedSeuratClusters.RDS")
 
 ```
@@ -347,13 +345,13 @@ Look at the expression of different marker lists
 ```{r}
 # we want to use the total RNA not just the genes that are integrated
 # change the default assay
-DefaultAssay(integrated_seurate) <- "RNA"
+DefaultAssay(integrated_seurat) <- "RNA"
 # we need to scale the RNA data
-integrated_seurate <- ScaleData(integrated_seurate)
-DoHeatmap(integrated_seurate, features = microglia, group.by = "integrated_snn_res.0.4")
-DotPlot(integrated_seurate, features = microglia, group.by = "integrated_snn_res.0.4") + RotatedAxis()
-Idents(integrated_seurate) <- "integrated_snn_res.0.4"
-FeaturePlot(integrated_seurate, features = microglia, label = TRUE)
+integrated_seurat <- ScaleData(integrated_seurat)
+DoHeatmap(integrated_seurat, features = microglia, group.by = "integrated_snn_res.0.4")
+DotPlot(integrated_seurat, features = microglia, group.by = "integrated_snn_res.0.4") + RotatedAxis()
+Idents(integrated_seurat) <- "integrated_snn_res.0.4"
+FeaturePlot(integrated_seurat, features = microglia, label = TRUE)
 
 ```
 Cluster 0 has some microglial markers and cluster 2 has lots of microglia markers.
@@ -361,24 +359,22 @@ Cluster 0 has some microglial markers and cluster 2 has lots of microglia marker
 
 ```{r}
 # oligodendrocytes
-DoHeatmap(integrated_seurate, features = oligodendrocyte, group.by = "integrated_snn_res.0.4")
-DotPlot(integrated_seurate, features = oligodendrocyte, group.by = "integrated_snn_res.0.4") + RotatedAxis()
+DoHeatmap(integrated_seurat, features = oligodendrocyte, group.by = "integrated_snn_res.0.4")
+DotPlot(integrated_seurat, features = oligodendrocyte, group.by = "integrated_snn_res.0.4") + RotatedAxis()
 
 ```
 Cluster 1,3,5 have mature oligodendrocyte markers and cluster 6 has strong oligo lineage markers 
 
 ```{r}
 # astrocyte
-DoHeatmap(integrated_seurate, features = astrocytes, group.by = "integrated_snn_res.0.4")
-DotPlot(integrated_seurate, features = astrocytes, group.by = "integrated_snn_res.0.4") + RotatedAxis()
+DoHeatmap(integrated_seurat, features = astrocytes, group.by = "integrated_snn_res.0.4")
+DotPlot(integrated_seurat, features = astrocytes, group.by = "integrated_snn_res.0.4") + RotatedAxis()
 
 ```
 Cluster 5 is the best match for astrocyte markers
 
-Save the integrated object for next steps
-
 ```{r}
-saveRDS(integrated_seurate, file = "integrated_seurat.Rds")
+#saveRDS(integrated_seurat, file = "integrated_seurat.Rds")
 
 ```
 
@@ -396,7 +392,7 @@ https://sydneybiox.github.io/scClassify/articles/scClassify.html
 # reference data
 # we have the data prepared as a Seurat object
 
-ref <- readRDS("data/Karolinski_DevForebrain_downsample_Level1.RDS",sep = "")
+ref <- readRDS("data/Karolinski_DevForebrain_downsample_Level1.RDS")
 ref
 
 #check the meta data
@@ -508,12 +504,17 @@ scClassify_res <- scClassify(exprsMat_train = dgCMat_ref,
 ```
 
 
-See the cell type predictions by cluster
+See the cell type predictions by cluster and add the predicted labels to the Seurat object
 
 ```{r}
 
 table(scClassify_res$testRes$test$pearson_WKNN_limma$predRes,query_clusters)
-
+meta_to_add <- scClassify_res$testRes$test$pearson_WKNN_limma$predRes %>% 
+                enframe %>% 
+                as.data.frame %>% 
+                column_to_rownames("name") %>%
+                setNames(nm = c("Karolinski"))
+integrated_seurat <- AddMetaData(integrated_seurat, meta_to_add)
 
 ```
 
@@ -522,28 +523,26 @@ Check another reference set
 ```{r}
 # refrence data
 # we have the data prepared as a Seurat object
-path <- "/Users/rhalenathomas/Documents/Data/scRNAseq/PublicData"
-ref2 <- readRDS(paste(path,"/Nowakowski_dev_cortext.RDS",sep = ""))
+
+ref2 <- readRDS("data/Nowakowski_dev_cortext.RDS")
 ref2
 
 #check the meta data
 colnames(ref2@meta.data)
-unique(ref2$Celltypes)
+
 #make the reference matrix and reference cell types 
 
 
 dgCMat_ref2 <- GetAssayData(ref2)
 # get the cell type data
 Idents(ref2) <- "Celltypes"
+
 levels(ref2)
 
 ref_celltypes2 <- as.character(Idents(ref2))
 ref_celltypes2[is.na(ref_celltypes2)] <- "NA"
 
-
-
 unique(ref_celltypes2)
-
 
 # check the object
 dim(dgCMat_ref2)
@@ -567,37 +566,19 @@ scClassify_res <- scClassify(exprsMat_train = dgCMat_ref2,
                              similarity = c("pearson"),
                              returnList = FALSE,
                              verbose = FALSE)
-Sys.time()
+
+#Add the predicted labels to the Seurat object 
+
+meta_to_add <- scClassify_res$testRes$test$pearson_WKNN_limma$predRes %>% 
+                enframe %>% 
+                as.data.frame %>% 
+                column_to_rownames("name") %>%
+                setNames(nm = c("Nowakowski"))
+integrated_seurat <- AddMetaData(integrated_seurat, meta_to_add)
 
 ```
 
-See the tree of cell types from reference 2
-
-```{r}
-
-scClassify_res$trainRes
-plotCellTypeTree(cellTypeTree(scClassify_res$trainRes))
-
-
-```
-
-
-
-See the cell type predictions by cluster
-
-```{r}
-
-table(scClassify_res$testRes$test$pearson_WKNN_limma$predRes,query_clusters)
-
-
-```
-
-
-
-
-
-
-Now that we have the different forms of information to annotate the cells we need to decide on the annotations to add, then add them into the data object.
+Now that we have the an different forms of information to annotate the cells we need to decide on the annotations to add, then add them into the data object.
 
 ```{r}
 # we need to set the identity to rename
@@ -612,7 +593,14 @@ names(cell_types) <- levels(integrated_seurat)
 integrated_seurat <- RenameIdents(integrated_seurat, cell_types)
 integrated_seurat <- AddMetaData(object=integrated_seurat, metadata=Idents(integrated_seurat), col.name = "CellTypes")
 
+```
 
+Save the integrated object for next steps
+
+```{r}
+saveRDS(integrated_seurat, file = "integrated_seurat.Rds")
+
+Sys.time()
 
 ```
 
