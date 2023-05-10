@@ -25,3 +25,5 @@ scRNAseq Workflow step by step workbooks
 4. Compare proportions of cell types
 
 - Workbook3:
+1. Comparing clusters in different datasets
+2. Comparing different clustering labels for the same dataset
