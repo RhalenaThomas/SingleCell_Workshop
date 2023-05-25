@@ -39,11 +39,16 @@ Load the data: Starting with the adolescent data.
 # load data
 
 # insert the pathway to the location of the data
-setwd("C:/Users/Home/Documents/GitHub/SingleCell_Workshop/")
 
-adolescent_data <- Read10X("data/Adolescent_14_YO_raw_feature_bc_matrix/", 
+# Windows
+setwd("C:/Users/Home/Documents/GitHub/SingleCell_Workshop/") # run in terminal directly
+
+# MAC/Linux
+wd <- "/Users/rhalenathomas/Documents/scRNAclubMcGill/workshop2023/data/"
+setwd(wd)
+
+adolescent_data <- Read10X("Adolescent_14_YO_raw_feature_bc_matrix/", 
                       strip.suffix = TRUE )
-
 #Look at the dimensions of the matrix
 dim(adolescent_data)
 
@@ -62,6 +67,7 @@ Remove barcodes with too few genes that could be empty droplets
 ```{r}
 #Remove barcodes with less than 200 genes detected (you can select a different value here)
 #You could use something more refined here, like EmptyDrops
+
 adolescent_data <- adolescent_data[, colSums(adolescent_data > 0)> 200]
 dim(adolescent_data)
 
@@ -112,9 +118,26 @@ Visualize the distributions
 
 ```{r}
 
-VlnPlot(adolescent_data_seurat, features = c("nCount_RNA","nFeature_RNA"), pt.size = 0)
+VlnPlot(adolescent_data_seurat, features = c("nCount_RNA","nFeature_RNA"), pt.size = 0.01)
 
 ```
+
+Optional: Save the data object or read in the saved object
+
+```{r}
+# note if your working directory is not set to the location of the saved file you will need to add the file pathway
+# un-comment the one you need
+
+# for mac
+wd <- "/Users/rhalenathomas/Documents/scRNAclubMcGill/workshop2023/data/"
+setwd(wd)
+
+#saveRDS(adolescent_data_seurat, "adolescent_data_seurat.RDS")
+adolescent_data_seurat <- readRDS("adolescent_data_seurat.RDS")
+
+```
+
+
 
 Repeat all these steps with the adult data. 
 
@@ -123,10 +146,16 @@ Repeat all these steps with the adult data.
 #Repeat above steps for the adult dataset, use a minimum genes per cell barcode cutoff of 200
 #With real data you would use the same cutoff across samples 
 #You would decide the cutoff based on what works best across your samples. 
-#Can be left as an exercise i.e. no code provided until after the workshop or code provided in a different file
+#Running each sample with minimal filtering then looking at the data distributions is best
+# here we apply the same filters as above 
 
-adult_data <- Read10X(data.dir = "data/Adult_41_YO_raw_feature_bc_matrix/", 
+# for mac
+setwd(wd)
+
+adult_data <- Read10X(data.dir = "/Users/rhalenathomas/Documents/scRNAclubMcGill/workshop2023/data/Adult_41_YO_raw_feature_bc_matrix/", 
                     strip.suffix = TRUE)
+# note for TAs on mac even when working directory is set the filepath needs to be included here # *** discuss 
+
 dim(adult_data)
 adult_data[1:5, 1:5]
 colSums(adult_data) %>% summary
@@ -140,6 +169,22 @@ adult_data_seurat$nCount_RNA %>% summary
 
 ```
 
+Optional: Save or read in the seurat object
+
+```{r}
+# note if your working directory is not set to the location of the saved file you will need to add the file pathway
+# un-comment the one you need
+
+# for mac
+setwd(wd)
+
+#saveRDS(adult_data_seurat, "adult_data_seurat.RDS")
+adult_data_seurat <- readRDS("adult_data_seurat.RDS")
+
+```
+
+
+
 Now we want to add some sample meta data
 
 ```{r}
@@ -150,17 +195,17 @@ adolescent_sample_metadata <- tibble(Cell_barcodes = colnames(adolescent_data_se
 head(adolescent_sample_metadata)
 
 # this sample is from one brain and the age is 14 years so we will add that data for all the cells
+
 ```
 
 The cells have previously been annotated - we will add in those annotations
 
 ```{r}
-# input file path
-
-input_file <- paste("data/HA799_14YO_metadata.csv",sep="")
+# for mac
+setwd(wd)
 
 #Read in metadata file with original cluster info
-adolescent_sample_clusters <- read_csv(file = input_file)
+adolescent_sample_clusters <- read_csv(file = "HA799_14YO_metadata.csv")
 head(adolescent_sample_clusters)
 
 ```
@@ -179,6 +224,7 @@ Now we will combine the two meta data ojbects and add the meta data into the Seu
 ```{r}
 #Combine the age and original cluster metadata into a single object
 #Note that not all the cells we have retained were present in the original analysis, we will keep all our called cells
+
 adolescent_sample_metadata %>% left_join(adolescent_sample_clusters, by = "Cell_barcodes") %>% 
   column_to_rownames("Cell_barcodes") %>% as.data.frame -> adolescent_sample_metadata
 adolescent_sample_metadata %>% head 
@@ -194,12 +240,14 @@ adolescent_data_seurat@meta.data %>% head
 
 #Remove the original matrix, and other unnecessary objects to clean up space 
 rm(adolescent_data, adolescent_sample_metadata, adolescent_sample_clusters)
+
 ```
 
 Repeat adding meta data for the adult object
 ```{r}
 #Repeat the process of adding metadata for the adult sample
-input_file <- paste("data/HA801_41YO_metadata.csv",sep="")
+setwd(wd)
+input_file <- "HA801_41YO_metadata.csv"
 
 adult_sample_metadata <- tibble(CellName = colnames(adult_data_seurat), 
                                 age = rep(41, dim(adult_data_seurat)[2]))
@@ -211,6 +259,7 @@ adult_data_seurat <- AddMetaData(adult_data_seurat, metadata = adult_sample_meta
 adult_data_seurat@meta.data %>% head
 # clean up extra files
 rm(adult_data, adult_sample_clusters, adult_sample_metadata)
+
 ```
 Filter out unwanted cells
 
@@ -253,14 +302,7 @@ VlnPlot(adult_data_seurat, features = c("percent.MT", "nCount_RNA", "nFeature_RN
 
 ```
 
-Cell cycle scoring (optional)
-```{r}
-adolescent_data_seurat <- CellCycleScoring(adolescent_data_seurat, g2m.features = cc.genes$g2m.genes, s.features = cc.genes$s.genes)
-VlnPlot(adolescent_data_seurat, features = c("S.Score", "G2M.Score"))
 
-adult_data_seurat <- CellCycleScoring(adult_data_seurat, g2m.features = cc.genes$g2m.genes, s.features = cc.genes$s.genes)
-VlnPlot(adult_data_seurat, features = c("S.Score", "G2M.Score"))
-```
 Data normalization
 
 ```{r}
@@ -273,7 +315,9 @@ GetAssayData(adolescent_data_seurat, assay = "RNA", slot = "data") %>% expm1 %>%
 GetAssayData(adolescent_data_seurat, assay = "RNA", slot = "counts") %>% colSums %>% head
 
 ```
+
 Finding Variable feature with two different methods
+
 ```{r}
 # Dispersion
 #Find and plot variable features (in our case genes) with dispersion based method
@@ -313,6 +357,18 @@ VariableFeaturePlot(adult_data_seurat)
 VariableFeatures(adult_data_seurat) %>% head(n = 20)
 
 ```
+
+
+Cell cycle scoring (optional) - we won't run
+```{r}
+adolescent_data_seurat <- CellCycleScoring(adolescent_data_seurat, g2m.features = cc.genes$g2m.genes, s.features = cc.genes$s.genes)
+VlnPlot(adolescent_data_seurat, features = c("S.Score", "G2M.Score"))
+
+adult_data_seurat <- CellCycleScoring(adult_data_seurat, g2m.features = cc.genes$g2m.genes, s.features = cc.genes$s.genes)
+VlnPlot(adult_data_seurat, features = c("S.Score", "G2M.Score"))
+```
+
+
 Dimensionality reduction PCA and UMAP
 
 ```{r}
@@ -332,6 +388,8 @@ PCAPlot(adolescent_data_seurat)
 ElbowPlot(adolescent_data_seurat, ndims = 30)
 
 ```
+
+Jackstraw: takes a long time to run
 
 ```{r}
 # Jackstraw
@@ -355,6 +413,7 @@ adolescent_data_seurat <- RunUMAP(adolescent_data_seurat, dims = 1:10)
 UMAPPlot(adolescent_data_seurat)
 
 
+
 ```
 
 Repeat dimensional reduction with the adult sample
@@ -369,6 +428,20 @@ adult_data_seurat <- RunUMAP(adult_data_seurat, dims = 1:10)
 UMAPPlot(adult_data_seurat)
 
 ```
+
+Optional: Save the data or reaad in the data objects
+
+```{r}
+saveRDS(adult_data_seurat, "adult_data_seuratUMAP.RDS")
+saveRDS(adolescent_data_seurat, "adolescent_data_seuratUMAP.RDS")
+
+adult_data_seurat <- readRDS("adult_data_seuratUMAP.RDS")
+adolescent_data_seurat <- readRDS("adolescent_data_seuratUMAP.RDS")
+
+```
+
+
+
 Doublet identification
 
 ```{r}
@@ -439,8 +512,8 @@ Save the data objects for later
 
 ```{r}
 
-saveRDS(adolescent_data_seurat, "adolsecentSeurat.Rds")
-saveRDS(adult_data_seurat, "adultSeurat.Rds")
+saveRDS(adolescent_data_seurat, "adolsecentSeuratW1.Rds")
+saveRDS(adult_data_seurat, "adultSeuratW1.Rds")
 Sys.time()
 
 ```
