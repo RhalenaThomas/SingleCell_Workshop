@@ -24,7 +24,7 @@ library(Matrix)
 library(scclusteval)
 library(mclust)
 
-# setwd("C:/Users/Home/Documents/GitHub/SingleCell_Workshop/")
+setwd("C:/Users/Home/Documents/GitHub/SingleCell_Workshop/")
 
 ```
 Here we will run MetaNeighbor
@@ -33,7 +33,7 @@ https://github.com/maggiecrow/MetaNeighbor
 Read in and properly format the data for the Lister lab. This is an example of using data in h5ad format with Seurat.
 
 ```{r}
-setwd(wd)
+#setwd(wd)
 
 #Load as anndata, and look at the object
 lister_data <- read_h5ad("data/ListerLab/Processed_data_RNA-all_full-counts-and-downsampled-CPM.h5ad")
@@ -84,23 +84,23 @@ pretrained_model_major_cluster = MetaNeighbor::trainModel(
  var_genes = rownames(lister_data),
  dat = lister_data,
  study_id = rep("Lister", dim(lister_data)[2]),
- cell_type = lister_data$major_clust
-)
-
+ cell_type = lister_data$major_clust)
 
 ```
 
 Optional save trained model or load trained mode
+
+
 ```{r}
 # training the model is computationally heavy
-setwd(wd)
+#setwd(wd)
 
 # save model
-saveRDS(pretrained_model_major_cluster, "pretainedModelLister.Rds")
-
+saveRDS(pretrained_model_major_cluster, "data/pretainedModelLister.Rds")
+```
+``` {r}
 # load model
-pretrained_model_major_cluster <- readRDS()
-
+pretrained_model_major_cluster <- readRDS("data/pretainedModelLister.Rds")
 
 ```
 
@@ -110,6 +110,8 @@ Remove the Lister lab object, and load our integrated Seurat object
 
 ```{r}
 rm(lister_data)
+```
+```{r}
 integrated_seurat <- readRDS("integrated_seurat.Rds")
 integrated_seurat <- as.SingleCellExperiment(integrated_seurat)
 
