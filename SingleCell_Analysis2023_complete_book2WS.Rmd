@@ -11,7 +11,7 @@ This workbook presents the next steps in the basic work flow for scRNAseq analys
 1. Merging samples and batch correction
 2. Clustering
 3. Cluster annotation
-4. Compare proportions of cell types
+
 
 This workbook assumes two Seurat objects 1. adolescent and 2. adult brain samples.
 The Seurat objects are created and the data is cleaned in Notebook 2. 
@@ -42,9 +42,13 @@ wd <- "/Users/rhalenathomas/Documents/scRNAclubMcGill/workshop2023/data/"
 setwd(wd)
 
 # read in the data objects if starting from save files
-#adolescent_data_seurat <- readRDS("adolsecentSeuratW1.Rds") %>% RenameCells(add.cell.id = "Adol_")
+adolescent_data_seurat <- readRDS("adolescent_data_seurat.RDS") %>% RenameCells(add.cell.id = "Adol_") adolescent_data_seurat.RDS
 
-#adult_data_seurat <- readRDS("adultSeuratW1.Rds") %>% RenameCells(add.cell.id = "Adult_")
+adult_data_seurat <- readRDS("adult_data_seurat.RDS") %>% RenameCells(add.cell.id = "Adult_")
+
+
+table(adult_data_seurat$age,adult_data_seurat$OriginalCluster)
+
 
 ```
 
