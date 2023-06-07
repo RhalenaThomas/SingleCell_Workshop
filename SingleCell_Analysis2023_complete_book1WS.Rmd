@@ -41,13 +41,14 @@ Load the data: Starting with the adolescent data.
 # insert the pathway to the location of the data
 
 # Windows
-setwd("C:/Users/Home/Documents/GitHub/SingleCell_Workshop/") # run in terminal directly
+#setwd("C:/Users/Home/Documents/GitHub/SingleCell_Workshop/") # run in terminal directly
 
 # MAC/Linux
 wd <- "/Users/rhalenathomas/Documents/scRNAclubMcGill/workshop2023/data/"
 setwd(wd)
 
-adolescent_data <- Read10X("Adolescent_14_YO_raw_feature_bc_matrix/", 
+
+adolescent_data <- Read10X("data/Adolescent_14_YO_raw_feature_bc_matrix/", 
                       strip.suffix = TRUE )
 #Look at the dimensions of the matrix
 dim(adolescent_data)
@@ -70,6 +71,7 @@ Remove barcodes with too few genes that could be empty droplets
 
 adolescent_data <- adolescent_data[, colSums(adolescent_data > 0)> 200]
 dim(adolescent_data)
+
 
 ```
 
@@ -122,6 +124,16 @@ VlnPlot(adolescent_data_seurat, features = c("nCount_RNA","nFeature_RNA"), pt.si
 
 ```
 
+Optional: removing genes
+
+```{r}
+
+genes_to_keep <- rownames(adolescent_data_seurat)
+genes_to_keep <- setdiff(genes_to_keep, c("MALAT1", "GAPDH"))
+temp <- subset(adolescent_data_seurat, features = genes_to_keep)
+temp
+```
+
 Optional: Save the data object or read in the saved object
 
 ```{r}
@@ -132,7 +144,7 @@ Optional: Save the data object or read in the saved object
 wd <- "/Users/rhalenathomas/Documents/scRNAclubMcGill/workshop2023/data/"
 setwd(wd)
 
-#saveRDS(adolescent_data_seurat, "adolescent_data_seurat.RDS")
+saveRDS(adolescent_data_seurat, "adolescent_data_seurat.RDS")
 adolescent_data_seurat <- readRDS("adolescent_data_seurat.RDS")
 
 ```
@@ -150,9 +162,9 @@ Repeat all these steps with the adult data.
 # here we apply the same filters as above 
 
 # for mac
-setwd(wd)
+#setwd(wd)
 
-adult_data <- Read10X(data.dir = "/Users/rhalenathomas/Documents/scRNAclubMcGill/workshop2023/data/Adult_41_YO_raw_feature_bc_matrix/", 
+adult_data <- Read10X(data.dir = "data/Adult_41_YO_raw_feature_bc_matrix/", 
                     strip.suffix = TRUE)
 # note for TAs on mac even when working directory is set the filepath needs to be included here # *** discuss 
 
@@ -178,7 +190,7 @@ Optional: Save or read in the seurat object
 # for mac
 setwd(wd)
 
-#saveRDS(adult_data_seurat, "adult_data_seurat.RDS")
+saveRDS(adult_data_seurat, "adult_data_seurat.RDS")
 adult_data_seurat <- readRDS("adult_data_seurat.RDS")
 
 ```
