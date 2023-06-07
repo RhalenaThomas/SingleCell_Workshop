@@ -38,13 +38,13 @@ library("Matrix")
 #setwd("C:/Users/Home/Documents/GitHub/SingleCell_Workshop/")
 
 # MAC/Linux
-wd <- "/Users/rhalenathomas/Documents/scRNAclubMcGill/workshop2023/data/"
-setwd(wd)
+#wd <- "/Users/rhalenathomas/Documents/scRNAclubMcGill/workshop2023/data/"
+setwd("C:/Users/Home/Documents/GitHub/SingleCell_Workshop/")
 
 # read in the data objects if starting from save files
-#adolescent_data_seurat <- readRDS("adolsecentSeuratW1.Rds") %>% RenameCells(add.cell.id = "Adol_")
+adolescent_data_seurat <- readRDS("adolsecentSeurat.Rds") %>% RenameCells(add.cell.id = "Adol_")
 
-#adult_data_seurat <- readRDS("adultSeuratW1.Rds") %>% RenameCells(add.cell.id = "Adult_")
+adult_data_seurat <- readRDS("adultSeurat.Rds") %>% RenameCells(add.cell.id = "Adult_")
 
 ```
 
@@ -203,7 +203,7 @@ Cluster annotation
 
 
 ```{r}
-setwd(wd)
+#setwd(wd)
 
 # find cluster markers
 
@@ -219,8 +219,9 @@ write.csv(ClusterMarkers,"ClusterMarkers.csv")
 Optional: If cluster markers were run previously and saved or if they take too long to run, read in the csv
 ```{r}
 
-setwd(wd)
+#setwd(wd)
 ClusterMarkers <- read.csv("ClusterMarkers.csv")
+
   
 ```
 
@@ -272,6 +273,8 @@ print(plotEnrich(clusterX.cell[[2]], showTerms = 20, numChar = 40, y = "Count", 
 
 }
 
+
+
 ```
 
 Run the function for each cluster to see if we can identify cell types
@@ -279,6 +282,8 @@ Run the function for each cluster to see if we can identify cell types
 ```{r}
 
 cluster0 <- checkCelltypes(cluster_num = 0)
+
+
 
 ```
 Cluster 0 is some kind of immune cells, possibly dendritic cell or macrophage.  These are likely the microglia
@@ -353,6 +358,11 @@ oligodendrocyte <- c("MBP","MOG","OLIG1","OLIG2","SOX10")
 
 # doi: 10.3390/biom11091361
 astrocytes <- c("GFAP","S100B","AQP4","APOE", "SOX9")
+
+
+integrated_seurat <- AddModuleScore(integrated_seurat, features = list(astrocytes, oligodendrocyte), name = "Glia")
+
+VlnPlot(integrated_seurat, features = c("Glia1", "Glia2"))
 
 ```
 
