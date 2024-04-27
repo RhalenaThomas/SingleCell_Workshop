@@ -1,23 +1,20 @@
 ---
-title: "SingleCellAnalysisWorkshop_2023 Book1"
+title: "SingleCellAnalysisWorkshop_2024"
 output:
   html_document:
     df_print: paged
 ---
 
-# Single Cell Analysis in R 2023 Notebook 1
+# Single Cell Analysis in R 2024 Notebook
 
-This workbook presents the first part of a basic work flow for scRNAseq analysis
+Section 1
 1. Loading data
 2. Quality Control
    2.1 Cell filtering
    2.2 Doublet assessment
 3. Normalization
 4. Feature selection
-5. Dimensionality reduction
-
-Example data set description:
-
+5. Dimensional reduction
 
 
 # Analysis workflow
@@ -38,7 +35,7 @@ Load the data: Starting with the adolescent data.
 ```{r}
 # load data
 
-adolescent_data <- Read10X("C:/Users/labuser/Desktop/Data/Adolescent_14_YO_raw_feature_bc_matrix", 
+adolescent_data <- Read10X("Adolescent_14_YO_raw_feature_bc_matrix", 
                       strip.suffix = TRUE )
 #Look at the dimensions of the matrix
 dim(adolescent_data)
@@ -127,12 +124,10 @@ Repeat all these steps with the adult data.
 #Running each sample with minimal filtering then looking at the data distributions is best
 # here we apply the same filters as above 
 
-# for mac
-#setwd(wd)
 
-adult_data <- Read10X(data.dir = "C:/Users/labuser/Desktop/Data/Adult_41_YO_raw_feature_bc_matrix/", 
+adult_data <- Read10X(data.dir = "Adult_41_YO_raw_feature_bc_matrix/", 
                     strip.suffix = TRUE)
-# note for TAs on mac even when working directory is set the filepath needs to be included here # *** discuss 
+
 
 dim(adult_data)
 adult_data[1:5, 1:5]
@@ -148,12 +143,17 @@ adult_data_seurat$nCount_RNA %>% summary
 ```
 
 Optional: Save or read in the seurat object
+Example
+
+```{r}
+saveRDS(adult_data_seurat, "adult_data_seurat.rds")
+```
+
 
 Now we want to add some sample meta data
 
 ```{r}
 # adding age and Region info to the object
-
 
 #Make a tibble with the age info
 #1- adolescent_sample_metadata <- This assigns the result of the following expression to the variable adolescent_sample_metadata.
@@ -165,13 +165,15 @@ adolescent_sample_metadata <- tibble(Cell_barcodes = colnames(adolescent_data_se
                                 age = rep(14, dim(adolescent_data_seurat)[2]))
 head(adolescent_sample_metadata)
 
+
+
 ```
+
+
 
 The cells have previously been annotated - we will add in those annotations
 
 ```{r}
-# setwd
-setwd("C:/Users/labuser/Downloads/Moein/Educational scRNAseq workshop Jun 2023/DATA")
 
 #Read in metadata file with original cluster info
 adolescent_sample_clusters <- read.csv(file = "HA799_14YO_metadata.csv")
@@ -219,7 +221,7 @@ rm(adolescent_data, adolescent_sample_metadata, adolescent_sample_clusters)
 Repeat adding meta data for the adult object
 ```{r}
 #Repeat the process of adding metadata for the adult sample
-setwd("C:/Users/labuser/Downloads/Moein/Educational scRNAseq workshop Jun 2023/DATA")
+
 input_file <- "HA801_41YO_metadata.csv"
 
 adult_sample_metadata <- tibble(CellName = colnames(adult_data_seurat), 
@@ -333,7 +335,7 @@ VariableFeatures(adult_data_seurat) %>% head(n = 20)
 ```
 
 
-Cell cycle scoring (optional) - we won't run
+Cell cycle scoring (optional) * Will we run this? 
 ```{r}
 adolescent_data_seurat <- CellCycleScoring(adolescent_data_seurat, g2m.features = cc.genes$g2m.genes, s.features = cc.genes$s.genes)
 VlnPlot(adolescent_data_seurat, features = c("S.Score", "G2M.Score"))
@@ -342,8 +344,22 @@ adult_data_seurat <- CellCycleScoring(adult_data_seurat, g2m.features = cc.genes
 VlnPlot(adult_data_seurat, features = c("S.Score", "G2M.Score"))
 ```
 
+Remove genes or regress out specific genes @Moein @Rhalena @Michael to discuss
 
-Dimensionality reduction PCA and UMAP
+Top expressed genes? 
+
+Code to remove genes - can remove over abundant seqences 
+
+Can regress cell cycle or other genes
+
+```{r}
+# provide code
+
+```
+
+
+
+Dimensional reduction PCA and UMAP
 
 ```{r}
 #Scaling is recommended before PCA, as otherwise highly expressed genes will have a disproportionate effect
@@ -403,7 +419,7 @@ UMAPPlot(adult_data_seurat)
 
 ```
 
-Optional: Save the data or reaad in the data objects
+Optional: Save the data or read in the data objects
 
 ```{r}
 saveRDS(adult_data_seurat, "adult_data_seuratUMAP.RDS")
@@ -413,7 +429,6 @@ adult_data_seurat <- readRDS("adult_data_seuratUMAP.RDS")
 adolescent_data_seurat <- readRDS("adolescent_data_seuratUMAP.RDS")
 
 ```
-
 
 
 Doublet identification
@@ -428,11 +443,13 @@ Doublet identification
 #First we test a number of pN (proportion of generated artificial doublets) and pK
 #We get different lists of probabilities of artifical nearest neighbors with these tested parameters
 #Also keep in mind the results are not deterministic (every run will give slightly different results)
+
+### Conflict with Seurat 5 !!!!!!!
 sweep.res.list_adolescent <- paramSweep_v3(adolescent_data_seurat, PCs = 1:15, sct = FALSE)
 
 #We do not have the "ground truth" regarding doublets, such from from genotype data for pooled samples 
 #We sumamrize the performance of the range of pN=pK parameters we tested
-sweep.stats_adolescent <- summarizeSweep(sweep.res.list_adolescent, GT = FALSE)
+#sweep.stats_adolescent <- summarizeSweep(sweep.res.list_adolescent, GT = FALSE)
 
 #Here the "best" pK for the data is chosen based on a metric determined by the DoubletFinder developers
 #Which performs best in datasets where the ground truth is known
@@ -488,8 +505,14 @@ Save the data objects for later
 
 saveRDS(adolescent_data_seurat, "adolsecentSeuratW1.Rds")
 saveRDS(adult_data_seurat, "adultSeuratW1.Rds")
-Sys.time()
 
 ```
+
+
+Section 2 
+
+
+
+
 
 
