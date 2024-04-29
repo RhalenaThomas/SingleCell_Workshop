@@ -438,18 +438,18 @@ Doublet identification
 # Assess possible doublets  -----------------------------------------------
 #Using instructions here: https://github.com/chris-mcginnis-ucsf/
 
+library(DoubletFinder)
+
 #First we have to find a pK which determines how big of a neighborhood will be examined for doublets
 #This should be chosen for each library separately
 #First we test a number of pN (proportion of generated artificial doublets) and pK
 #We get different lists of probabilities of artifical nearest neighbors with these tested parameters
 #Also keep in mind the results are not deterministic (every run will give slightly different results)
-
-### Conflict with Seurat 5 !!!!!!!
-sweep.res.list_adolescent <- paramSweep_v3(adolescent_data_seurat, PCs = 1:15, sct = FALSE)
-
+sweep.res.list_adolescent <- paramSweep(adolescent_data_seurat, PCs = 1:15, sct = FALSE)
+sweep.res.list_adolescent <- paramSweep(adolescent_data_seurat, PCs = 1:15)
 #We do not have the "ground truth" regarding doublets, such from from genotype data for pooled samples 
 #We sumamrize the performance of the range of pN=pK parameters we tested
-#sweep.stats_adolescent <- summarizeSweep(sweep.res.list_adolescent, GT = FALSE)
+sweep.stats_adolescent <- summarizeSweep(sweep.res.list_adolescent, GT = FALSE)
 
 #Here the "best" pK for the data is chosen based on a metric determined by the DoubletFinder developers
 #Which performs best in datasets where the ground truth is known
@@ -457,14 +457,14 @@ bcmvn_adolescent <- find.pK(sweep.stats_adolescent)
 ggplot(bcmvn_adolescent, aes(x = pK, y = BCmetric, group = "Sweep")) + geom_point() + geom_line() + 
   theme(axis.text.x = element_text(angle = 90))
 
-#We will pick pK = 0.29
+#We will pick pK = 0.09
 #We are not going to use our clustering information to estimate "homotypic" doublets
 #We are simply going to use an expected doublet formation rate of 7.5%
 nExp_poi <- round(0.075*nrow(adolescent_data_seurat@meta.data))
 adolescent_data_seurat <- doubletFinder_v3(adolescent_data_seurat, PCs = 1:15, pN = 0.25, pK = 0.09, nExp = nExp_poi, reuse.pANN = FALSE, sct = FALSE)
 
 #Here we update the Seurat object version just in case the one returned by DoubletFinder is an older version
-adolescent_data_seurat <- UpdateSeuratObject(adolescent_data_seurat)
+#adolescent_data_seurat <- UpdateSeuratObject(adolescent_data_seurat)
 
 #Visualize and assess the cells called as probable doublets
 UMAPPlot(adolescent_data_seurat, group.by = "DF.classifications_0.25_0.09_533")
@@ -478,7 +478,7 @@ VlnPlot(adolescent_data_seurat, features = c("nCount_RNA", "nFeature_RNA", "perc
 
 ```
 
-Repeat doublet detection in adult sample
+Repeat doublet detection in adult sample - need to update
 
 ```{r}
 
