@@ -509,10 +509,42 @@ saveRDS(adult_data_seurat, "adultSeuratW1.Rds")
 ```
 
 
-Section 2 
+Section 2 Datat integration, Clustering and Annotation
+Merging samples and batch correction
+Clustering
+Cluster annotation: Find cluster markers and look at reference cell type libraries 
+Look at expression of known cell type markers and module scores
+Automated annotation
+
+
+If needed read in the data saved from earlier
+
+```{r}
+# the data object needs to be in the same directory as the script or else you must give the file path
+adolescent_data_seurat <- readRDS("adolsecentSeuratW1.Rds")
+adult_data_seurat <- readRDS("adultSeuratW1.Rds")
+
+
+```
+
+Have a look at the data
+```{r}
+table(adolescent_data_seurat$Original_clusterID)
+
+```
+
+```{r}
+table(adult_data_seurat$OriginalCluster)
+```
 
 
 
+```{r}
+merge_seurat <- merge(adolescent_data_seurat,adult_data_seurat)
+merge_seurat
+unique(merge_seurat$orig.ident)
 
 
+```
+Integrate objects using the Seurat function
 
