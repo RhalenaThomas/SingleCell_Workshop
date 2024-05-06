@@ -15,7 +15,7 @@
 install.packages("Seurat", lib = "/Users/rhalenathomas/Library/CustomR")
 
 # Load Seurat 5 from the custom library location
-library(Seurat, lib.loc = "/Users/rhalenathomas/Library/CustomR")
+library(Seurat, lib.loc = "/Users/rhalenathomas/Library/CustomR/")
 
 
 # Check Seurat version

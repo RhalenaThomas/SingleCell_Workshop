@@ -16,3 +16,8 @@ library(devtools)
 devtools::install_github("SydneyBioX/scClassify")
 
 
+# must install harmony
+
+install.packages("harmony")
+install.packages("patchwork")
+install.packages("clustree")

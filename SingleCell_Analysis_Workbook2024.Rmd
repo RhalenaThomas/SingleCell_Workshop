@@ -28,6 +28,7 @@ library(Seurat)
 library(tidyverse)
 library(DoubletFinder)
 
+
 ```
 
 Load the data: Starting with the adolescent data.
@@ -62,6 +63,7 @@ Remove barcodes with too few genes that could be empty droplets
 #This line of code is filtering columns in the "adolescent_data" data frame based on the condition that the number of values greater than 0 in each column is greater than 200.
 adolescent_data <- adolescent_data[, colSums(adolescent_data > 0)> 200]
 dim(adolescent_data)
+
 
 
 ```
@@ -438,7 +440,6 @@ Doublet identification
 # Assess possible doublets  -----------------------------------------------
 #Using instructions here: https://github.com/chris-mcginnis-ucsf/
 
-library(DoubletFinder)
 
 #First we have to find a pK which determines how big of a neighborhood will be examined for doublets
 #This should be chosen for each library separately
@@ -503,8 +504,14 @@ Save the data objects for later
 
 ```{r}
 
-saveRDS(adolescent_data_seurat, "adolsecentSeuratW1.Rds")
-saveRDS(adult_data_seurat, "adultSeuratW1.Rds")
+saveRDS(adolescent_data_seurat, "adolsecentSeurat.Rds")
+saveRDS(adult_data_seurat, "adultSeurat.Rds")
+
+# temp code to save the data objects locally - remove before uploading to Magic Castle
+temp_pathway = "/Users/rhalenathomas/Desktop/temp/"
+saveRDS(adolescent_data_seurat, paste(temp_pathway,"adolsecentSeurat.Rds", sep = ""))
+saveRDS(adult_data_seurat, paste(temp_pathway,"adultSeurat.Rds", sep = ""))
+
 
 ```
 
@@ -521,8 +528,13 @@ If needed read in the data saved from earlier
 
 ```{r}
 # the data object needs to be in the same directory as the script or else you must give the file path
-adolescent_data_seurat <- readRDS("adolsecentSeuratW1.Rds")
-adult_data_seurat <- readRDS("adultSeuratW1.Rds")
+adolescent_data_seurat <- readRDS("adolsecentSeurat.Rds")
+adult_data_seurat <- readRDS("adultSeurat.Rds")
+
+
+### temp code for local - Delete before sending for magic castle 
+adolescent_data_seurat <- readRDS(paste(temp_pathway,"adolsecentSeurat.Rds",sep = ""))
+adult_data_seurat <- readRDS(paste(temp_pathway,"adultSeurat.Rds", sep = ""))
 
 
 ```
@@ -531,10 +543,16 @@ Have a look at the data
 ```{r}
 table(adolescent_data_seurat$Original_clusterID)
 
+dim(adolescent_data_seurat)
+
+
 ```
 
 ```{r}
 table(adult_data_seurat$OriginalCluster)
+
+dim(adult_data_seurat)
+
 ```
 
 
@@ -546,5 +564,225 @@ unique(merge_seurat$orig.ident)
 
 
 ```
-Integrate objects using the Seurat function
+
+In Seurat V5 we now have the two datasets show as separate layers. 
+
+
+Integrate objects using the Seurat functions: We no longer need to create a list as the input but use the layers directly.
+Seurat V5 now supports multiple method for integration of the data. 
+
+
+First we need to process the merged object
+```{r}
+
+merge_seurat <- NormalizeData(merge_seurat)
+merge_seurat <- FindVariableFeatures(merge_seurat)
+merge_seurat <- ScaleData(merge_seurat)
+merge_seurat <- RunPCA(merge_seurat)
+
+```
+
+Look at the UMAP and find clusters in the merge only object
+
+```{r, fig.width= 12}
+
+merge_seurat <- FindNeighbors(merge_seurat, dims = 1:30, reduction = "pca")
+merge_seurat <- FindClusters(merge_seurat, resolution = 0.6, cluster.name = "unintegrated_clusters")
+
+# run UMAP on the none integrated input
+merge_seurat <- RunUMAP(merge_seurat , dims = 1:20, reduction = "pca", reduction.name = "umap.unintegrated")
+
+# visualize with the previous celltype annotations
+pMerge <- DimPlot(merge_seurat, reduction = "umap.unintegrated", group.by = c("orig.ident", "Original_clusterID","unintegrated_clusters"), combine = FALSE)
+
+pMerge
+
+
+```
+
+
+Now we can try to harmonize/align/integrate the two datasets
+
+Seurat 5 provides numerous options
+Anchor-based CCA integration (method=CCAIntegration) - Original Seurat 2 method
+Anchor-based RPCA integration (method=RPCAIntegration) - Seurat method
+Harmony (method=HarmonyIntegration) 
+FastMNN (method= FastMNNIntegration)
+scVI (method=scVIIntegration) 
+
+
+Lets compare a couple of integration methods: The Seurat method (recipical pca) and harmony 
+
+
+```{r}
+integrated_seurat <- IntegrateLayers(
+  object = merge_seurat, method = RPCAIntegration,
+  orig.reduction = "pca", new.reduction = "integrated.rpca",
+  verbose = FALSE
+)
+
+```
+
+Run the workflow for visualization and finding clusters in the rpca integration
+
+```{r, fig.width=12}
+# find the clusters in the integrated object
+integrated_seurat <- FindNeighbors(integrated_seurat, dims = 1:20, reduction = "integrated.rpca")
+integrated_seurat <- FindClusters(integrated_seurat, resolution = 0.6, cluster.name = "rpca_clusters")
+
+# run the UMAP with the integration rpca
+integrated_seurat <- RunUMAP(integrated_seurat, dims = 1:20, reduction = "integrated.rpca", reduction.name = "umap.rpca")
+
+#visualize by batch and cell type annotation
+pRPCA <- DimPlot(integrated_seurat, reduction = "umap.rpca", group.by = c("orig.ident", "Original_clusterID","rpca_clusters" ), combine = FALSE)
+
+pRPCA
+
+```
+
+
+Harmony is a usually "stronger" integration
+
+```{r}
+integrated_seurat <- IntegrateLayers(
+  object = integrated_seurat, method = HarmonyIntegration,
+  orig.reduction = "pca", new.reduction = "harmony",
+  verbose = FALSE
+)
+
+
+```
+
+Find Clusters and make UMAP with the Harmony integration
+
+```{r, fig.width=12}
+# find the clusters in the integrated object
+integrated_seurat <- FindNeighbors(integrated_seurat, dims = 1:20, reduction = "harmony")
+integrated_seurat <- FindClusters(integrated_seurat, resolution = 0.6, cluster.name = "harmony_clusters")
+
+# run the UMAP with the integration rpca
+integrated_seurat <- RunUMAP(integrated_seurat, dims = 1:20, reduction = "harmony", reduction.name = "umap.harmony")
+
+#visualize by batch and cell type annotation
+pHarmony <- DimPlot(integrated_seurat, reduction = "umap.harmony", group.by = c("orig.ident", "Original_clusterID","harmony_clusters"), combine = FALSE)
+
+pHarmony
+
+```
+
+Look at the merge compared to two methods of integrations
+
+```{r, fig.width= 15}
+
+wrap_plots(c(pMerge, pRPCA, pHarmony), ncol = 3, byrow = F)
+
+
+```
+
+Now the layers need to be joined back together
+
+```{r}
+# Join
+integrated_seurat <- JoinLayers(integrated_seurat)
+
+# process the integrated object - SCTransform runs normalize, scale and find variable genes 
+integrated_seurat <- SCTransform(integrated_seurat, do.scale = TRUE, variable.features.n = 3000)
+integrated_seurat <- RunPCA(integrated_seurat)
+
+```
+
+# Explore clustering conditions
+
+There are several things to decide
+1) Number of PCs to include
+2) Reduction option (integrated or not)
+3) number of starting neighbours for snn
+4) resolution in Louvain network detection (or Leiden package which is the same formula)
+
+Note - there are also different clustering methods but we will use the just the default Seurat method
+
+```{r}
+# see the importance of the pca components
+ElbowPlot(integrated_seurat, ndims=30, reduction = "pca")
+
+
+```
+15 PCs is a good cutoff here. 
+We will use the integrated RPCA reduction
+For the starting neighbours in FindNeighbors this the k.param and in Find 
+
+```{r}
+# see the number of cells and get the square root
+dim(integrated_seurat)
+sqrt(9314) # number of cells
+
+```
+
+
+```{r}
+# we already ran the FindNeighors function but with more pcs before and the default k.param
+integrated_seurat <- FindNeighbors(integrated_seurat, dims = 1:15, reduction = "integrated.rpca", k.param = 95)
+
+# now we will run a vector of resolutions
+integrated_seurat <- FindClusters(integrated_seurat, resolution = c(0, 0.05, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0))
+
+```
+We can visualize the pattern of the cells the clusters at different resolutions
+
+```{r}
+clustree(integrated_seurat, prefix = "RNA_snn_res.")
+```
+
+Lets also look at the UMAP to see where the clusters show up.
+
+```{r}
+res <- c(0.05, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0)
+resolutions <- paste("RNA_snn_res.", res, sep="")
+resolutions
+
+for(r in resolutions){
+  print(DimPlot(integrated_seurat, group.by = r),reduction = "umap.rpca")
+}
+
+```
+
+```{r}
+DimPlot(integrated_seurat, reduction = "umap.rpca", group.by =  "Original_clusterID")
+```
+
+# Annotation
+Now we choose a resolution to annotate. We are expecting microglia, astrocytes, oligodendrocytes and OPCs. We will choose resolution 0.4
+
+To annotate clusters we will take several things into account
+1. Cluster markers with Cell type library references
+2. Known marker visualization and module scores
+3. Reference data set predictions or automated annotation
+
+
+First we will calculate Differential gene expression between each cluster and all the other clusters
+The significantly upregulated genes are the cluster markers
+
+```{r}
+# we need to select the level of clustering that we want to annotate
+Idents(integrated_seurat) <- "RNA_snn_res.0.4"
+ClusterMarkers <- FindAllMarkers(integrated_seurat, only.pos = TRUE, test.use = "MAST")
+
+# optional: save the cluster markers
+write.csv(ClusterMarkers,"ClusterMarkers.csv")
+
+# note this took a very long time to run - will it be faster with wilcoxin?
+
+ClusterMarkers
+
+```
+
+Have a look at the cluster markers
+
+```{r}
+
+top5 <- ClusterMarkers %>% group_by(cluster) %>% top_n(n=5, wt =avg_log2FC)
+DoHeatmap(integrated_seurat, features = top5$gene, size = 3, angle = 90, group.by = "RNA_snn_res.0.4", slot = "data")
+
+
+```
 
