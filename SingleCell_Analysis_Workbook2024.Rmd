@@ -27,6 +27,7 @@ Sys.time()
 library(Seurat)
 library(tidyverse)
 library(DoubletFinder)
+library(patchwork)
 
 
 ```
@@ -516,12 +517,13 @@ saveRDS(adult_data_seurat, paste(temp_pathway,"adultSeurat.Rds", sep = ""))
 ```
 
 
-Section 2 Datat integration, Clustering and Annotation
-Merging samples and batch correction
-Clustering
-Cluster annotation: Find cluster markers and look at reference cell type libraries 
-Look at expression of known cell type markers and module scores
-Automated annotation
+#Section 2 Datat integration, Clustering and Annotation
+- Merging samples and batch correction
+- Clustering
+- Cluster annotation: 
+  --Find cluster markers and look at reference cell type libraries 
+  --Look at expression of known cell type markers and module scores
+  --Automated annotation
 
 
 If needed read in the data saved from earlier
@@ -538,6 +540,8 @@ adult_data_seurat <- readRDS(paste(temp_pathway,"adultSeurat.Rds", sep = ""))
 
 
 ```
+
+
 
 Have a look at the data
 ```{r}
@@ -558,14 +562,30 @@ dim(adult_data_seurat)
 
 
 ```{r}
+
 merge_seurat <- merge(adolescent_data_seurat,adult_data_seurat)
 merge_seurat
 unique(merge_seurat$orig.ident)
 
+```
+Why do we receive this warning?
+
+In Seurat V5 we now have the two datasets as separate layers. 
+Lets have  a look 
+
+```{r}
+# we now have different slots inside our assay$RNA 
+
+# with one dataset we have 
+GetAssayData(adolescent_data_seurat, assay = "RNA", slot = "counts") %>% colSums %>% head
+
+
+# in the merged object 
+GetAssayData(merge_seurat, assay = "RNA", slot = "counts.Adolescent")  %>% colSums %>% head
+
+# this are the same
 
 ```
-
-In Seurat V5 we now have the two datasets show as separate layers. 
 
 
 Integrate objects using the Seurat functions: We no longer need to create a list as the input but use the layers directly.
@@ -573,18 +593,50 @@ Seurat V5 now supports multiple method for integration of the data.
 
 
 First we need to process the merged object
-```{r}
 
+```{r}
 merge_seurat <- NormalizeData(merge_seurat)
 merge_seurat <- FindVariableFeatures(merge_seurat)
 merge_seurat <- ScaleData(merge_seurat)
+
+```
+
+Look at the data again
+
+```{r}
+
+GetAssayData(merge_seurat, assay = "RNA", slot = "scale.data.Adolescent")  %>% colSums %>% head
+ 
+GetAssayData(merge_seurat, assay = "RNA", slot = "scale.data")  %>% colSums %>% head
+
+# this are not the same because the first scaled data is scaled for only the Adolescent data and the second is for the two datasets combined
+
+```
+Check the variable features
+
+```{r}
+p1 <- VariableFeaturePlot(merge_seurat)
+
+top20merge <- VariableFeatures(adult_data_seurat) %>% head(n = 20)
+
+p2 <- LabelPoints(plot= p1, points = top20merge, repel = TRUE)
+p2
+
+```
+
+
+
+```{r}
+# Run PCA on the merged object
+# We just found the variable features in the merged object
 merge_seurat <- RunPCA(merge_seurat)
 
 ```
 
-Look at the UMAP and find clusters in the merge only object
 
-```{r, fig.width= 12}
+Look at the UMAP and find clusters in the merge object with the RNA normalized input
+
+```{r, fig.width= 4}
 
 merge_seurat <- FindNeighbors(merge_seurat, dims = 1:30, reduction = "pca")
 merge_seurat <- FindClusters(merge_seurat, resolution = 0.6, cluster.name = "unintegrated_clusters")
@@ -601,6 +653,82 @@ pMerge
 ```
 
 
+The function "SCTransform" combines: NormalizeData, FindVariableFeatures and ScaleData functions
+This function can also be used to regress out co-variates - cell cycle genes, % mitochondria
+
+```{r}
+# Normalize, scale and find variable features in the merged datasets
+merge_seurat <- SCTransform(merge_seurat)
+
+```
+
+SCTransform will create change the active.assay to SCT instead of RNA and will now be the default assay
+```{r}
+DefaultAssay(merge_seurat)
+```
+
+Look inside the data object at the results
+
+```{r}
+# in the merged object RNA for one dataset
+GetAssayData(merge_seurat, assay = "RNA", slot = "counts.Adolescent")  %>% colSums %>% head
+
+# normalized across both dataset combined
+GetAssayData(merge_seurat, assay = "SCT", slot = "counts")  %>% colSums %>% head
+
+# now the values even in the counts are adjusted
+print("Look at the scaled data ")
+print("")
+# Look at the Normalize, ScaleData function compared to SCTransform
+
+GetAssayData(merge_seurat, assay = "RNA", slot = "scale.data")  %>% colSums %>% head
+GetAssayData(merge_seurat, assay = "SCT", slot = "scale.data")  %>% colSums %>% head
+
+
+
+```
+
+
+Have a look at the variable Features in the integrated object
+```{r}
+
+SCTvariable <- VariableFeatures(merge_seurat) 
+SCTvariable[1:10]
+
+
+```
+
+
+
+```{r}
+# this will run on the SCT values
+
+merge_seurat <- RunPCA(merge_seurat, reduction.name = "sct.pca")
+
+```
+
+
+
+Look at the UMAP and find clusters in the merge object with the SCTransform input
+
+```{r, fig.width= 4}
+
+DefaultAssay(merge_seurat) <- "SCT"
+merge_seurat <- FindNeighbors(merge_seurat, dims = 1:30, reduction = "pca")
+merge_seurat <- FindClusters(merge_seurat, resolution = 0.6, cluster.name = "unintegrated_clusters.SCT")
+
+# run UMAP on the none integrated input
+merge_seurat <- RunUMAP(merge_seurat , dims = 1:20, reduction = "pca", reduction.name = "umap.SCT")
+
+# visualize with the previous celltype annotations
+pMergeSCT <- DimPlot(merge_seurat, reduction = "umapSCT", group.by = c("orig.ident", "Original_clusterID","unintegrated_clusters"), combine = FALSE)
+
+pMergeSCT
+
+
+```
+
+
 Now we can try to harmonize/align/integrate the two datasets
 
 Seurat 5 provides numerous options
@@ -611,21 +739,23 @@ FastMNN (method= FastMNNIntegration)
 scVI (method=scVIIntegration) 
 
 
-Lets compare a couple of integration methods: The Seurat method (recipical pca) and harmony 
+Lets compare a couple of integration methods: The Seurat method (reciprocal pca) and harmony 
 
 
 ```{r}
+
 integrated_seurat <- IntegrateLayers(
   object = merge_seurat, method = RPCAIntegration,
   orig.reduction = "pca", new.reduction = "integrated.rpca",
   verbose = FALSE
 )
 
+
 ```
 
 Run the workflow for visualization and finding clusters in the rpca integration
 
-```{r, fig.width=12}
+```{r, fig.width=4}
 # find the clusters in the integrated object
 integrated_seurat <- FindNeighbors(integrated_seurat, dims = 1:20, reduction = "integrated.rpca")
 integrated_seurat <- FindClusters(integrated_seurat, resolution = 0.6, cluster.name = "rpca_clusters")
@@ -655,7 +785,7 @@ integrated_seurat <- IntegrateLayers(
 
 Find Clusters and make UMAP with the Harmony integration
 
-```{r, fig.width=12}
+```{r, fig.width=4}
 # find the clusters in the integrated object
 integrated_seurat <- FindNeighbors(integrated_seurat, dims = 1:20, reduction = "harmony")
 integrated_seurat <- FindClusters(integrated_seurat, resolution = 0.6, cluster.name = "harmony_clusters")
@@ -670,11 +800,11 @@ pHarmony
 
 ```
 
-Look at the merge compared to two methods of integrations
+Look at the merge compared, merge SCT to to two methods of integration
 
 ```{r, fig.width= 15}
 
-wrap_plots(c(pMerge, pRPCA, pHarmony), ncol = 3, byrow = F)
+wrap_plots(c(pMerge, pMergeSCT, pRPCA, pHarmony), ncol = 4, byrow = F)
 
 
 ```
@@ -685,31 +815,54 @@ Now the layers need to be joined back together
 # Join
 integrated_seurat <- JoinLayers(integrated_seurat)
 
-# process the integrated object - SCTransform runs normalize, scale and find variable genes 
-integrated_seurat <- SCTransform(integrated_seurat, do.scale = TRUE, variable.features.n = 3000)
-integrated_seurat <- RunPCA(integrated_seurat)
 
 ```
+save the data object for later
+
+```{r}
+saveRDS(integrated_seurat,"integrated_seurat.rds")
+
+# temp code
+saveRDS(integrated_seurat, paste(temp_pathway,"integrated_seurat.rds", sep = ""))
+
+```
+
+
+
+
 
 # Explore clustering conditions
 
 There are several things to decide
 1) Number of PCs to include
-2) Reduction option (integrated or not)
+2) Dim Reduction option (integrated or not)
 3) number of starting neighbours for snn
 4) resolution in Louvain network detection (or Leiden package which is the same formula)
 
 Note - there are also different clustering methods but we will use the just the default Seurat method
 
 ```{r}
-# see the importance of the pca components
+# see the importance of the dim reduction components using different feature input 
+# what reductions do we have?
+integrated_seurat@reductions
+
+```
+
+```{r}
+# plot the standard deviations in the pca
 ElbowPlot(integrated_seurat, ndims=30, reduction = "pca")
+ElbowPlot(integrated_seurat, ndims=30, reduction = "sct.pca")
+# standard deviation isn't calculated in the rpca method or harmony
 
 
 ```
-15 PCs is a good cutoff here. 
-We will use the integrated RPCA reduction
-For the starting neighbours in FindNeighbors this the k.param and in Find 
+The number of dimension to use will change the output data
+However there is not a current easy method to determine the PCs to use 
+We will go with 20
+
+
+For the starting neighbours in FindNeighbors this the k.param 
+
 
 ```{r}
 # see the number of cells and get the square root
@@ -717,11 +870,12 @@ dim(integrated_seurat)
 sqrt(9314) # number of cells
 
 ```
-
+This a starting point to capture the global data 
 
 ```{r}
 # we already ran the FindNeighors function but with more pcs before and the default k.param
-integrated_seurat <- FindNeighbors(integrated_seurat, dims = 1:15, reduction = "integrated.rpca", k.param = 95)
+DefaultAssay(integrated_seurat) <- "RNA"
+integrated_seurat <- FindNeighbors(integrated_seurat, dims = 1:20, reduction = "integrated.rpca", k.param = 95)
 
 # now we will run a vector of resolutions
 integrated_seurat <- FindClusters(integrated_seurat, resolution = c(0, 0.05, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0))
@@ -730,7 +884,9 @@ integrated_seurat <- FindClusters(integrated_seurat, resolution = c(0, 0.05, 0.1
 We can visualize the pattern of the cells the clusters at different resolutions
 
 ```{r}
+library(clustree)
 clustree(integrated_seurat, prefix = "RNA_snn_res.")
+
 ```
 
 Lets also look at the UMAP to see where the clusters show up.
@@ -738,11 +894,12 @@ Lets also look at the UMAP to see where the clusters show up.
 ```{r}
 res <- c(0.05, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0)
 resolutions <- paste("RNA_snn_res.", res, sep="")
-resolutions
 
 for(r in resolutions){
   print(DimPlot(integrated_seurat, group.by = r),reduction = "umap.rpca")
 }
+
+
 
 ```
 
@@ -750,8 +907,50 @@ for(r in resolutions){
 DimPlot(integrated_seurat, reduction = "umap.rpca", group.by =  "Original_clusterID")
 ```
 
+
+What is the effect of the k parameter?
+
+```{r}
+#integrated_seurat.95 <- integrated_seurat
+integrated_seurat.20 <- integrated_seurat
+integrated_seurat <- FindNeighbors(integrated_seurat, dims = 1:20, reduction = "integrated.rpca", k.param= 44)
+
+# now we will run a vector of resolutions
+integrated_seurat <- FindClusters(integrated_seurat, resolution = c(0, 0.05, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0))
+
+
+```
+
+Now how do the different clusters look
+
+```{r}
+
+clustree(integrated_seurat, prefix = "RNA_snn_res.")
+res <- c(0.05, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0)
+resolutions <- paste("RNA_snn_res.", res, sep="")
+
+for(r in resolutions){
+  print(DimPlot(integrated_seurat, group.by = r),reduction = "umap.rpca")
+}
+
+```
+
+save object with clusters
+```{r}
+#saveRDS(integrated_seurat,"integrated_seurat.rds")
+
+# temp code
+saveRDS(integrated_seurat, paste(temp_pathway,"integrated_seurat_clusters.rds", sep = ""))
+
+
+```
+
+
+
+*** Rhalena note to myself - add slides for different k.param only put one in the notebook - clean above
+
 # Annotation
-Now we choose a resolution to annotate. We are expecting microglia, astrocytes, oligodendrocytes and OPCs. We will choose resolution 0.4
+Now we choose a resolution to annotate. We are expecting microglia, astrocytes, oligodendrocytes and OPCs. We will choose resolution 0.2
 
 To annotate clusters we will take several things into account
 1. Cluster markers with Cell type library references
@@ -763,16 +962,11 @@ First we will calculate Differential gene expression between each cluster and al
 The significantly upregulated genes are the cluster markers
 
 ```{r}
-# we need to select the level of clustering that we want to annotate
-Idents(integrated_seurat) <- "RNA_snn_res.0.4"
-ClusterMarkers <- FindAllMarkers(integrated_seurat, only.pos = TRUE, test.use = "MAST")
 
-# optional: save the cluster markers
-write.csv(ClusterMarkers,"ClusterMarkers.csv")
+ClusterMarkers <- FindAllMarkers(integrated_seurat, assay = "RNA", only.pos = TRUE, test.use = "wilcox", slot = "data", logfc.threshold = 0.5, min.cells.feature = 25, min.pct = 0.1)
+ClusterMarkers <- ClusterMarkers5
 
-# note this took a very long time to run - will it be faster with wilcoxin?
-
-ClusterMarkers
+write.csv(ClusterMarkers, "ClusterMarkersRes02.csv")
 
 ```
 
@@ -780,9 +974,77 @@ Have a look at the cluster markers
 
 ```{r}
 
-top5 <- ClusterMarkers %>% group_by(cluster) %>% top_n(n=5, wt =avg_log2FC)
-DoHeatmap(integrated_seurat, features = top5$gene, size = 3, angle = 90, group.by = "RNA_snn_res.0.4", slot = "data")
+top5 <- ClusterMarkers5 %>% filter(p_val_adj < 0.001) %>% group_by(cluster) %>% top_n(n=3, wt =avg_log2FC)
+top5
+DoHeatmap(integrated_seurat, features = top5$gene, size = 3, angle = 90, group.by = "RNA_snn_res.0.2", slot = "scale.data")
+DotPlot(integrated_seurat, features = top5$gene, group.by = "RNA_snn_res.0.2") + RotatedAxis()
 
 
 ```
+How many genes are significant for each cluster in the cluster markers
+
+```{r}
+
+ClusterMarkers5 %>% filter(p_val_adj < 0.001) %>% group_by(cluster) %>% 
+  summarize(count = n())
+
+
+```
+
+Now we will check these markers with the reference pathways 
+
+```{r}
+
+```
+
+
+
+
+
+# Look at expression of specific cell type markers 
+
+```{r}
+# Microglia markers
+mgmarkers <- c("AIF1","P2RY12","P2RY13","TREM119","GPR34","TREM2","CD40","ITGAM","MERTK","HEXB")
+DotPlot(integrated_seurat, features = mgmarkers) + RotatedAxis()
+
+```
+Feature plots - Microglia markers
+
+```{r}
+
+```
+
+
+
+
+Oligodendrocytes
+
+```{r}
+
+```
+
+
+Neuronal markers
+
+```{r}
+
+
+```
+
+Astrocyte markers
+
+```{r}
+
+```
+
+
+# Module scores
+
+```{r}
+
+```
+
+
+
 
