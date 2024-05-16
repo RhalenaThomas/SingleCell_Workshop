@@ -427,7 +427,7 @@ https://sydneybiox.github.io/scClassify/articles/scClassify.html
 ```{r}
 
 # we need to create the reference matrices
-#matrices where each row is a gene and each column a cell for a reference dataset and a query data set
+# matrices where each row is a gene and each column a cell for a reference dataset and a query data set
 
 # reference data
 # we have the data prepared as a Seurat object
