@@ -347,9 +347,15 @@ adult_data_seurat <- CellCycleScoring(adult_data_seurat, g2m.features = cc.genes
 VlnPlot(adult_data_seurat, features = c("S.Score", "G2M.Score"))
 ```
 
-Remove genes or regress out specific genes @Moein @Rhalena @Michael to discuss
 
-Top expressed genes? 
+
+Get top expressed genes
+
+```{r}
+
+```
+
+
 
 Code to remove genes - can remove over abundant seqences 
 
