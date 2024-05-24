@@ -1824,11 +1824,14 @@ tryCatch({plotHeatmapPretrained(best_hits, margins = c(12,12))},
 # Differential Gene Expression analysis
 
 
+Now we will compute cell-type specific, cell-based differential gene expression analysis between our subjects groups (age 14 & age 41)
 
-Now we will compute cell-type specific, cell-based differential gene expression analysis between our sibjucts groups (age 14 & age 41)
-We will begin by running an interactive example with Microglia. Later on in the workshop we will run a loop for all of the cell types. 
+Here we will begin by running an interactive example with Microglia.
+Later on in the workshop we will run a loop for all of the cell types. 
 
 ````{r}
+# Check out the data object again to know what we need to select
+
 ## set default assay to RNA
 DefaultAssay(integrated_seurat_reg) <- "RNA"
 
@@ -1847,7 +1850,13 @@ table(integrated_seurat_reg@meta.data$age)
 ## Number of cell types per subject group
 table(integrated_seurat_reg@meta.data$Celltypes, integrated_seurat_reg@meta.data$age)
 
-## Set the idents of the cell
+```
+
+We want to calculate DGE with 
+
+```{r}
+
+## Set the idents of the to the cell types labels we want to compare
 Idents(integrated_seurat_reg) <-  "Celltypes"
 
 ## Check the idents
@@ -1856,8 +1865,13 @@ head(Idents(integrated_seurat_reg))
 ## Subset the Seurat object to only include our initial cell type of interest
 celltype.sub.seu <- subset(integrated_seurat_reg, idents = "Microglia")
 
-## Check the idents of the subsetted Seurat object
+## Check the idents of the  Seurat object
 head(Idents(celltype.sub.seu))
+
+```
+
+
+```{r}
 
 ## Set the idents of the subsetted Seurat object to the metadata column that defines our subject groups
 Idents(celltype.sub.seu) <- "age"  
@@ -1865,12 +1879,25 @@ Idents(celltype.sub.seu) <- "age"
 ## Check the new idents of the subsetted Seurat object
 head(Idents(celltype.sub.seu))
 
+```
+
+Now we run the DGE using the MAST algorithm.  Individual cells are considered an n
+The MAST alorigthm was created to account for the sparse matrix of scRNAseq
+
+This takes a long time to run 
+
+```{r}
+
 ## Run Differential gene expression  
 DGE <- FindMarkers(celltype.sub.seu, ident.1 = 14, ident.2 = 41,  logfc.threshold = 0, test.use = "MAST")
   
 ## Examine the DEG results
 head(DGE)
+
 ```
+
+
+
 
 We will now plot the differential gene expression results
 
@@ -1897,22 +1924,24 @@ EnhancedVolcano(DGE,
                 y = 'p_val',
                 pCutoff = 0.05,
                 FCcutoff = 1,
-                pointSize = 2.0,
-                labSize = 5, 
+                pointSize = 1.0,
+                labSize = 3, 
                 colCustom = keyvals,
                 parseLabels = TRUE,
                 drawConnectors = TRUE,
-                colAlpha = 1,
+                colAlpha = 1,max.overlaps = 50,
+                xlim = c(-22,20),widthConnectors = 0.1
 ) +
 theme_classic() + 
 theme(plot.subtitle=element_blank(),
     plot.title=element_blank(),
     legend.position = "right",
     legend.title=element_blank())
+
 ```
 
 Now we will run a loop to compute DGE for all of the cell types 
-
+We won't run this code together - we can read in the results below
 
 ```{r}
 ## Set default assay to RNA
@@ -1955,11 +1984,21 @@ for(i in 1:nrow(par_df)){
 }
   
 combined_df <- do.call(rbind, list)
+
+write.csv(combined_df,"DGEallCells.csv")
+
 ```
+
+
+```{r}
+combined_df <- read.csv("DGEallCells.csv")
+```
+
+
 
 Now we will plot the results for all cell types 
 
-```{r}
+```{r, fig.width=12, fig.height=4}
 ## Modify colour scheme
 DGE <- combined_df
 DGE$col <- "lightgrey"
@@ -1978,7 +2017,7 @@ names(keyvals)[keyvals == 'navy'] <- 'Log2FC < -1; adj. P < 0.05'
 
 ## Print volcano plot
 EnhancedVolcano(DGE,
-                lab = NA,
+                lab = DGE$X,
                 x = 'avg_log2FC',
                 y = 'p_val',
                 pCutoff = 0.05,
@@ -1986,17 +2025,21 @@ EnhancedVolcano(DGE,
                 pointSize = 2.0,
                 labSize = 5, 
                 colCustom = keyvals,
-                parseLabels = TRUE,
+                parseLabels = FALSE,
                 drawConnectors = TRUE,
-                colAlpha = 1,
+                colAlpha = 1,max.overlaps = 40, widthConnectors = 0.05
 ) +
 theme_classic() + 
 theme(plot.subtitle=element_blank(),
     plot.title=element_blank(),
     legend.position = "right",
+    legend.text = element_text(size =18),
+    strip.text = element_text(size = 15),
     legend.title=element_blank()) +
 facet_wrap(~DEG_contrast, scales = "free_y")
+
 ```
+
 
 
 

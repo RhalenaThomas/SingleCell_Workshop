@@ -27,7 +27,6 @@ install.packages("remotes", lib = second_libpath)
 install.packages("ggplot2", lib = second_libpath)
 install.packages("patchwork", lib = second_libpath)
 install.packages("clustree", lib = second_libpath)
-install.packages("anndata", lib = second_libpath)
 
 
 remotes::install_github('chris-mcginnis-ucsf/DoubletFinder', lib = second_libpath)  ### required some kind of password chain on my mac 
@@ -46,25 +45,6 @@ if (!require("BiocManager", quietly = TRUE))
 
 BiocManager::install("MetaNeighbor", lib = second_libpath, force = TRUE)
 
-# note "Matrix" should be installed from base R but it isn't in my separate library. 
-
-library(SingleCellExperiment, lib = second_libpath)
-
-library(readr)
-library(MetaNeighbor)
-library(anndata)
-library(Matrix)
-library(scclusteval)
-library(mclust)
-library(MAST)
-library(EnhancedVolcano)
-library(DESeq2)
-
-
-
-
-
-
 
 
 # Load Seurat 5 from the custom library location
@@ -79,8 +59,12 @@ library(enrichR, lib = second_libpath)
 library(scClassify, lib = second_libpath)
 library(anndata, lib = second_libpath)
 library(MetaNeighbor, lib = second_libpath)
+library(SingleCellExperiment, lib = second_libpath)
+library(EnhancedVolcano, lib = second_libpath)
 
 # Check Seurat version
 packageVersion("Seurat")
 packageVersion("SeuratObject")
+
+
 

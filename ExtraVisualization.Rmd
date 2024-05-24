@@ -33,3 +33,13 @@ VlnPlot(integrated_seurat_reg, features = c("pANN_all"), pt.size = 0.001)
 
 
 
+
+
+```{r}
+#Plot CellCycle scores per cluster
+VlnPlot(integrated_seurat_reg, features = c("S.Score", "G2M.Score"))
+
+DimPlot(integrated_seurat_reg, reduction = "umap.rpca", group.by = c("Phase" ), combine = FALSE)
+```
+
+
