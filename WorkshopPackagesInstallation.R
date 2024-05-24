@@ -41,6 +41,11 @@ if (!require("BiocManager", quietly = TRUE))
 BiocManager::install("SingleCellExperiment", lib = second_libpath, force = TRUE)
 
 
+if (!require("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+
+BiocManager::install("MetaNeighbor", lib = second_libpath, force = TRUE)
+
 # note "Matrix" should be installed from base R but it isn't in my separate library. 
 
 library(SingleCellExperiment, lib = second_libpath)
@@ -73,7 +78,7 @@ library(DoubletFinder, lib.loc = second_libpath)
 library(enrichR, lib = second_libpath)
 library(scClassify, lib = second_libpath)
 library(anndata, lib = second_libpath)
-library(Matrix)
+library(MetaNeighbor, lib = second_libpath)
 
 # Check Seurat version
 packageVersion("Seurat")

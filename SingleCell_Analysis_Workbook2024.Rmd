@@ -1676,20 +1676,8 @@ saveRDS(integrated_seurat, "integrated_labelled_seu.rds")
 
 
 
-Load libraries
-```{r}
-library(SingleCellExperiment)
-library(readr)
-library(MetaNeighbor)
-library(anndata) # for reading in the listr data 
-library(Matrix)
-library(scclusteval)
-library(mclust)
-library(MAST)
-library(EnhancedVolcano)
-library(DESeq2)
+# Compare our annotations to other data sets
 
-```
 
 Here we will run MetaNeighbor
 https://github.com/maggiecrow/MetaNeighbor
@@ -1697,83 +1685,56 @@ https://github.com/maggiecrow/MetaNeighbor
 Read in and properly format the data for the Lister lab. This is an example of using data in h5ad format with Seurat.
 Here is the format of the anndata object in R
 https://cran.r-project.org/web/packages/anndata/readme/README.html
+However this will not run on a lab top and must be run in HPC or a workstation computer. 
+
+
+
+
+Look at Bhadurini data - this is developing brain at different stages 
 
 ```{r}
-#Load as anndata, and look at the object
-# this is the scanpy object 
-lister_data <- read_h5ad("ListerLab/Processed_data_RNA-all_full-counts-and-downsampled-CPM.h5ad")
-lister_data
-class(lister_data)
 
-#Convert the basics to Seurat format, look at the object
-class(lister_data$X)
-
-### NOTE I had issues converting by this method
-mat_t <- t(lister_data$X)
-lister_data_seu <- CreateSeuratObject(counts = mat_t, meta.data = lister_data$obs)
-
-# I get all kinds of errors
-
-
-
+Brain <- readRDS("/Users/rhalenathomas/Documents/Data/scRNAseq/PublicData/Bhaduri_downsample.RDS")
+colnames(Brain@meta.data)
+unique(Brain$area)
+unique(Brain$age)
+unique(Brain$cell_type) # main cell types - best to use
+unique(Brain$cell_cluster) # extensive subtypes
+unique(Brain$cell_class) # grouping cell types together into higher categories
 
 ```
 
 
-```{r}
-library(SeuratDisk)
-
-#Convert("ListerLab/Processed_data_RNA-all_full-counts-and-downsampled-CPM.h5ad", dest = "h5seurat", overwrite = TRUE)
-lister_seu <- LoadH5Seurat("ListerLab/Processed_data_RNA-all_full-counts-and-downsampled-CPM.h5seurat")
-
-
-```
-
-
-
-
-
-Look at the Lister data object
-
-```{r}
-lister_data
-
-# Look at the major cell types and clusters, also distribution of genes and UMIs
-lister_data$cell_type %>% table
-lister_data$major_clust %>% table
-VlnPlot(lister_data, features = c("nCount_RNA", "nFeature_RNA"), pt.size = 0.001)
-lister_data$nCount_RNA %>% summary
-lister_data$nFeature_RNA %>% summary
-
-```
 
 Now we will train some classifiers using this object as the reference, but first we will do some pre-processing. 
 
-First we wiill build the classifier using all the cells, and then we will re-run the analysis using only the non-neuronal cells. 
+First we will build the classifier using all the cells, and then we will re-run the analysis using only the non-neuronal cells. 
 
 ```{r}
-Normalize, find variable features, convert to SingleCellExperiment and subset to only the variable features 
-lister_data <- subset(lister_data, cell_type == "Non-Neu")
-lister_data <- NormalizeData(lister_data, normalization.method = "LogNormalize", scale.factor = 10000)
-lister_data <- FindVariableFeatures(lister_data, selection.method = "vst", nfeatures = 3000)
-var_features <- VariableFeatures(lister_data)
-Idents(lister_data) <- lister_data$major_clust
-VlnPlot(lister_data, features = c("SNAP25", "GAD1", "SLC17A7"), pt.size = -1)
-VlnPlot(lister_data, features = c("ALDH1L1", "MRC1"), pt.size = -1)
-VlnPlot(lister_data, features = c("PLP1", "CLDN5"), pt.size = -1)
-lister_data <- as.SingleCellExperiment(lister_data)
-lister_data <- lister_data[var_features,]
-lister_data
+# we already have variable features in this data object 
+# we need to select them
+var_features <- VariableFeatures(Brain)
+
+# set the identity as what we want to use as the reference labels
+Idents(Brain) <- Brain$cell_type
+
+# make a single cell experiment object
+Brain_SCE <- as.SingleCellExperiment(Brain)
+# now make a smaller object with just the selected variable features
+Brain_SCE <-  Brain_SCE[var_features,]
+Brain_SCE 
+
 ```
 
 Time to train the model!
 
 ```{r}
-pretrained_model_major_cluster = MetaNeighbor::trainModel(
-var_genes = rownames(lister_data),
-dat = lister_data,
-study_id = rep("Lister", dim(lister_data)[2]),
-cell_type = lister_data$major_clust)
+pretrained_dev_cell_types = MetaNeighbor::trainModel(
+var_genes = rownames(Brain_SCE),
+dat = Brain_SCE,
+study_id = rep("Brain", dim(Brain_SCE)[2]),
+cell_type = Brain_SCE$cell_type)
+
 ```
 
 Optional save trained model or load trained mode
@@ -1782,36 +1743,53 @@ Optional save trained model or load trained mode
 # training the model is computationally heavy
 
 # Save model
-saveRDS(pretrained_model_major_cluster, "data/pretainedModelLister.Rds")
+saveRDS(pretrained_dev_cell_types, "pretainedModelDevelopingBrainBhaAllCelltypes.Rds")
 
 ```
 
 Load the pretrained model 
 ``` {r}
-# load model
-pretrained_model_major_cluster <- readRDS("/home/fiorini9/scratch/SCWorskshop/pretainedModelLister.Rds")
+# load model trained with adult brain data the Lister data
 
+pretrained_model_major_cluster <- readRDS("pretainedModelLister.Rds")
+
+# load the developing brain model if needed
+
+pretrained_dev_cell_types <- readRDS("pretainedModelDevelopingBrainBhaAllCelltypes.Rds")
 ```
 
-Remove the Lister lab object, and load our integrated Seurat object
+Remove extra objects, and load our integrated Seurat object
 
 ```{r}
-rm(lister_data)
+rm(Brain,Brain_SCE)
 ```
 
 Load the Seurat object
 ```{r}
 ## load the Seurat object
-integrated_seurat_reg <- readRDS("/home/fiorini9/scratch/SCWorskshop/integrated_seurat_clusters.rds")
+integrated_seurat_reg <- readRDS("integrated_labelled_seu.rds")
 ```
 
-Examine the expression data
+
+
+Compare our data with the developing brain data
+
 ```{r}
-GetAssayData(integrated_seurat_reg, assay = "RNA", slot = "data")  %>% colSums %>% head
-GetAssayData(integrated_seurat_reg, assay = "RNA", slot = "counts")  %>% colSums %>% head
+aurocs = MetaNeighborUS(
+trained_model = pretrained_dev_cell_types, dat = as.SingleCellExperiment(integrated_seurat_reg),
+study_id = rep("integrated", dim(integrated_seurat_reg)[2]), 
+cell_type = integrated_seurat_reg@meta.data$Celltypes
+)
+## print plot
+tryCatch({plotHeatmapPretrained(aurocs, margins = c(12,12))}, error = function(error_condition) {})
+
 ```
 
-One versus all
+
+
+
+Compare our data with the pretained Lister model
+
 ```{r}
 aurocs = MetaNeighborUS(
 trained_model = pretrained_model_major_cluster, dat = as.SingleCellExperiment(integrated_seurat_reg),
@@ -1820,7 +1798,10 @@ cell_type = integrated_seurat_reg@meta.data$Celltypes,
 fast_version = TRUE
 )
 ## print plot
-tryCatch({plotHeatmapPretrained(aurocs, margins = c(5,5))}, error = function(error_condition) {})
+tryCatch({plotHeatmapPretrained(aurocs, margins = c(12,12))}, error = function(error_condition) {})
+
+
+
 ```
 
 One versus best
@@ -1834,49 +1815,15 @@ fast_version = TRUE
 )
 
 ## print plot
-tryCatch({plotHeatmapPretrained(best_hits, margins = c(5,5))}, 
+tryCatch({plotHeatmapPretrained(best_hits, margins = c(12,12))}, 
          error = function(error_condition) {})
 ```
 
-Compare labels obtained with supervised classification of cells and unsupervised clustering, also between the two supervised clustering labels
 
-``` {r JaccardIndexPlots, dev = c("png")}
- #pdf(file = "C:/Users/Home/Documents/GitHub/SingleCell_Workshop/JaccardIndexPlots.pdf", onefile = TRUE)
-  plot1
-  plot2
-  plot3  
- #dev.off()
-```
-Assess doublets and cell cycle genes per annotated
 
-``` {r}
-table(integrated_seurat_reg@meta.data$age, integrated_seurat_reg@meta.data$DF.classifications_0.25_0.09_533)
-table(integrated_seurat_reg@meta.data$age, integrated_seurat_reg@meta.data$DF.classifications_0.25_0.17_146)
+# Differential Gene Expression analysis
 
-#Make one variable with all the doublet classifications
-integrated_seurat_reg@meta.data$DF_all <- integrated_seurat_reg@meta.data$DF.classifications_0.25_0.09_533
-integrated_seurat_reg@meta.data$DF_all[integrated_seurat_reg@meta.data$age == 41] <- integrated_seurat_reg@meta.data$DF.classifications_0.25_0.17_146[integrated_seurat_reg@meta.data$age == 41]
 
-#Make one variable with all the pANN scores
-integrated_seurat_reg@meta.data$pANN_all <- integrated_seurat_reg@meta.data$pANN_0.25_0.09_533
-integrated_seurat_reg@meta.data$pANN_all[integrated_seurat_reg@meta.data$age == 41] <- integrated_seurat_reg@meta.data$pANN_0.25_0.17_146[integrated_seurat_reg@meta.data$age == 41]
-
-#Plot doublet classifications and pANN scores
-table(integrated_seurat_reg@meta.data$DF_all)
-
-## Dimplot
-DimPlot(integrated_seurat_reg, reduction = "umap.rpca", group.by = c("DF_all" ), combine = FALSE)
-
-## VlnPlot
-VlnPlot(integrated_seurat_reg, features = c("pANN_all"), pt.size = 0.001)
-```
-
-```{r}
-#Plot CellCycle scores per cluster
-VlnPlot(integrated_seurat_reg, features = c("S.Score", "G2M.Score"))
-
-DimPlot(integrated_seurat_reg, reduction = "umap.rpca", group.by = c("Phase" ), combine = FALSE)
-```
 
 Now we will compute cell-type specific, cell-based differential gene expression analysis between our sibjucts groups (age 14 & age 41)
 We will begin by running an interactive example with Microglia. Later on in the workshop we will run a loop for all of the cell types. 
