@@ -1,0 +1,274 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+# How to make an object from the ParseBio or any non 10X input
+
+To make the Seurat object you need  
+1. An expression matrix  
+2. A file with the barcodes to add to the matrix  
+3. A file with the features (gene names in our case)  
+
+
+```{r}
+
+#1. define all your file names
+# these are obviously not the real file names
+matrixfile <- "pathway/DGE_filtered/matrix.mtx"
+metafilepath <- "pathway/DGE_filtered/barcodes_other_sample_info.csv"
+featuresfile <- "pathway/DGE_filtered/gene_info.csv"
+
+
+# make the expression matrix 
+# Seurat expects the matrix file to be as specific format with the barcodes and features as column and row names
+# this is not the case for Parse Data and maybe not for other companies either 
+
+# I will over this when looking at the outputs
+  
+expression_matrix <- ReadMtx(
+  mtx = matrixfile, 
+  cells = metafilepath, 
+  features = featuresfile, 
+  cell.column = 1,              # defining the column with the barcodes
+  feature.column = 2,           # defining the column with the genes
+  cell.sep = ",",               # define the separation
+  feature.sep = ",",            # define the separation
+  skip.cell = 1, 
+  skip.feature = 1, 
+  mtx.transpose = TRUE          
+)
+
+
+# once you have made this matrix you can use CreateSeuratObject
+# I will have explained the matrix generation 
+# you could explain this general function that works for all input types as long as you have the correct format of matrix 
+seurat_object <- CreateSeuratObject(counts = expression_matrix, min.cells = 1, min.features = 10)
+
+
+# for parse we add in sample and well info into the seurat object
+# the barcodes and genes are in the matrix and already in the object
+# It might not be necessary to mention this 
+metadata.parse <- read.csv(metafilepath, row.names = 1)
+seurat_object <- AddMetaData(seurat_object, metadata= metadata.parse)
+
+
+
+```
+
+
+# Looking at the features and detecting things that are not mRNA
+
+* Other types of RNA and non-coding RNA
+
+^RNA (starts with RNA) = Any name that starts with "RNA"
+General or miscellaneous RNA entries not further classified. Rare in naming but may be present in some annotation sets.
+
+^MIR (starts with MIR) = MicroRNA (miRNA)
+Small non-coding RNAs (~22 nt) involved in post-transcriptional regulation of gene expression, often by binding to the 3' UTR of mRNAs.
+
+RNU[0-9]+ (contains RNU followed by any number) = Entries like RNU1, RNU6-1, etc.
+Stands for: RNA, U-rich small nuclear RNAs (snRNAs)
+Function: Components of the spliceosome, important for pre-mRNA splicing.
+
+^TRNA (starts with TRNA) =  TRNA-ALA, TRNA-LEU, etc.
+Stands for: Transfer RNA (tRNA)
+Function: Adaptor molecules that bring amino acids to the ribosome during translation.
+
+^SNOR[RD] (starts with SNOR followed by R or D) = SNORD and SNORR entries
+Stands for: Small nucleolar RNAs (snoRNAs)
+Function: Involved in modifying rRNA (methylation or pseudouridylation), important for ribosome biogenesis.
+
+
+NR_ (has NR_ in the name) = Matches: RefSeq IDs starting with NR_ (e.g., NR_003285)
+Stands for: Non-coding RNA in the RefSeq database
+
+LINC (name contains LINC) = Gene names like LINC00152, LINC00473, etc.
+Stands for: Long Intergenic Non-Coding RNA
+Function: These are lncRNAs transcribed from regions between protein-coding genes. They often regulate gene expression through chromatin remodeling, transcriptional interference, or miRNA sponging.
+
+HOTAIR
+Matches: The HOTAIR gene specifically
+Stands for: HOX Transcript Antisense RNA
+Function: A well-known lncRNA that regulates gene expression by guiding chromatin-modifying complexes. It's often overexpressed in cancer and involved in metastasis.
+
+-AS = Gene names ending or containing -AS (e.g., FOXC2-AS1)
+Stands for: Antisense RNA
+Function: Transcribed from the opposite strand of a coding gene; can regulate the sense transcript via RNA interference, transcriptional collision, or epigenetic mechanisms.
+
+-DT = Gene names like FOXC1-DT, HOXB-AS3-DT
+Stands for: Divergent Transcript
+Function: Often transcribed in the opposite direction from a promoter region, potentially regulating neighboring genes in cis.
+
+
+```{r}
+
+# remember that the rownames are the genes
+
+# here I am filtering for a list of everything | is an "or" 
+other_RNA <- rownames(seu[["RNA"]])[grepl("^RNA|^MIR|RNU[0-9]+|^TRNA|^SNOR[RD]", rownames(seu[["RNA"]]), ignore.case = TRUE)]
+nOther <- length(other_RNA)
+
+
+# these can be run separately 
+RNA <- rownames(seu[["RNA"]])[grepl("^RNA", rownames(seu[["RNA"]]), ignore.case = TRUE)]
+length(RNA)
+
+
+
+# find non coding RNA 
+nonCoding <- rownames(seu[["RNA"]])[grepl("NR_|LINC|HOTAIR|HOTTIP|-AS|-DT", rownames(seu[["RNA"]]), ignore.case = TRUE)]
+nNC <- length(nonCoding)
+
+# combine transcript names to filter out specified MALAT1 to remove
+to_filter_out <- c(other_RNA, nonCoding,"MALAT1")
+
+# I don't filter out genes from my main RNA matrix
+# I filter separately and add a second layer BUT you could filter directly the seurat object
+
+
+cat("Detected rRNA, miRNA, snRNA, tRNA or snoRNA transcripts: ",nOther, " \n")
+cat("There are ", length(RNA), "gene starting with RNA.  These genes are: \n")
+RNA
+cat("Detected long non-coding, antisense or divergene non-coding transcripts transcripts: ",nNC, "\n")
+cat("An example of 10 genes:")
+nonCoding[1:10]
+
+
+
+
+```
+
+
+```{r}
+dtm <- GetAssayData(seu, layer = "counts", assay = "RNA") # note this code is adjusted for seurat 5
+
+dim(dtm) # rows = genes and column = cells
+
+
+
+
+```
+
+
+
+
+A fun function to check expression patterns
+```{r}
+
+get_exp_data_from_seu <- function(seu_obj, gene_vector, assay = "RNA", layer = "counts") {
+  # Extract expression matrix (genes = rows, cells = columns)
+  exp_mat <- Seurat::GetAssayData(seu_obj, assay = assay, layer = layer)
+  
+  # Check that the genes exist in the Seurat object
+  gene_vector <- gene_vector[gene_vector %in% rownames(exp_mat)]
+  
+  if (length(gene_vector) == 0) {
+    stop("None of the specified genes were found in the Seurat object.")
+  }
+
+  # Subset matrix to selected genes (rows)
+  subset_mat <- exp_mat[gene_vector, , drop = FALSE]
+
+  # Compute statistics per gene (across all cells, i.e., across columns)
+  gene_stats <- data.frame(
+    Gene = gene_vector,
+    Mean = apply(subset_mat, 1, mean),
+    Min = apply(subset_mat, 1, min),
+    Max = apply(subset_mat, 1, max),
+    Variance = apply(subset_mat, 1, var)
+  )
+
+  print(gene_stats)
+  # return(gene_stats) # Uncomment to return instead of print
+}
+
+# choose any genes to get summary data
+
+get_exp_data_from_seu(seu, gene_vector = c("RNASET2","PINK1-AS","MAP2","MALAT1"))
+
+
+
+```
+
+
+More gene expression exploration 
+
+```{r}
+
+library(ggplot2)
+
+plot_top_expressed_genes <- function(seu_obj, n = 10, assay = "RNA", layer = "data") {
+  # Extract expression matrix (genes = rows, cells = columns)
+  exp_mat <- GetAssayData(seu_obj, assay = assay, layer = layer)
+  
+  # Compute average expression per gene
+  avg_expr <- rowMeans(exp_mat)
+
+  # Create data frame and select top n
+  top_genes <- sort(avg_expr, decreasing = TRUE)[1:n]
+  df <- data.frame(
+    Gene = factor(names(top_genes), levels = names(top_genes)),
+    AverageExpression = top_genes
+  )
+
+  # Plot
+  ggplot(df, aes(x = Gene, y = AverageExpression)) +
+    geom_bar(stat = "identity", fill = "steelblue") +
+    coord_flip() +
+    theme_minimal() +
+    labs(
+      title = paste("Top", n, "Highly Expressed Genes"),
+      y = "Average Expression",
+      x = "Gene"
+    )
+}
+
+plot_top_expressed_genes(seu, n = 20, layer = "counts")
+
+
+```
+
+
+Look at the distribution of a specific gene
+
+```{r}
+# where bins is the number of bins to divide the data into 
+
+plot_gene_expression_histogram <- function(seu_obj, gene, assay = "RNA", layer = "data", bins = 30) {
+  # Extract expression matrix
+  exp_mat <- GetAssayData(seu_obj, assay = assay, layer = layer)
+  
+  # Check if gene exists
+  if (!gene %in% rownames(exp_mat)) {
+    stop(paste("Gene", gene, "not found in Seurat object."))
+  }
+  
+  # Extract expression vector
+  expr_values <- exp_mat[gene, ]
+  
+  # Create data frame for plotting
+  df <- data.frame(Expression = expr_values)
+
+  # Plot histogram
+  ggplot(df, aes(x = Expression)) +
+    geom_histogram(bins = bins, fill = "steelblue", color = "white") +
+    theme_minimal() +
+    labs(
+      title = paste("Expression Histogram for", gene),
+      x = "Expression Level",
+      y = "Number of Cells"
+    )
+}
+
+plot_gene_expression_histogram(seu, layer = "counts", gene = "MALAT1", bins = 50)
+
+```
+
+```{r}
+plot_gene_expression_histogram(seu, layer = "counts", gene = "RNASET2", bins = 30)
+
+```
+
+

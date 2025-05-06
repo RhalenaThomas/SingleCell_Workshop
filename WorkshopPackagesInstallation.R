@@ -49,6 +49,10 @@ BiocManager::install("MetaNeighbor", lib = second_libpath, force = TRUE)
 
 # Load Seurat 5 from the custom library location
 library(Seurat, lib.loc = second_libpath)
+
+# check package version
+packageVersion("Seurat")
+
 library(tidyverse, lib.loc = second_libpath)
 library(remotes, lib.loc = second_libpath)
 library(ggplot2, lib.loc = second_libpath)

@@ -1,0 +1,24 @@
+---
+title: "NotesFor2024Preparation"
+output: html_document
+---
+
+# Data to upload
+
+1. CellRanger outputs
+2. Intermediate objects:
+  a)
+3. Reference data 
+
+"/Users/rhalenathomas/Documents/Data/scRNAseq/PublicData/Karolinski_DevForebrain_downsample_Level1.RDS"
+
+4. 
+
+
+
+# Required packages
+
+Seurat
+Tidyverse (or maybe just dplyr)
+Clustree
+scClassify
