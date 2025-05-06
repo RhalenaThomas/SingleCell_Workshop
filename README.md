@@ -13,26 +13,33 @@ The workshop is presented in R notebooks which will be run in Magic Castle with 
 
 # Single Cell Sequencing Analysis Workflow
 
-- Section 1: Understanding scRNAseq Data
-1. Loading data
-2. Quality Control
-   2.1 Cell filtering
-   2.2 Doublet assessment
-3. Normalization
-4. Feature selection
-5. Dimensionality reduction
+- Section 1: Understanding data structures for scRNAseq Data
+  1. Looking at the CellRanger and ParseBio Split-Pipe sequencing alignment and expression matrix outputs.
+  2. Reading files into R.  
+  3. Data structures and exploration in R.  
 
-- Section 2: Datat integration, Clustering and Annotation
-6. Merging samples and batch correction
-7. Clustering
-8. Cluster annotation
-  8.1 Find cluster markers and look at reference cell type libraries
-  8.2 Look at expression of known cell type markers
-  8.3 Automated annotation
+- Section 2: 
+1. Loading data and generating a Seurat object.
+2. scRNAseq data visualization, format and exploration in Seurat.
+3. Quality Control measures
+4. Filtering data
 
+- Section 3:
+1. Combining samples: merging and integration
+2. Normalization
+3. Feature selection
+4. Dimensionality reduction: PCA, UMAP
+5. Clustering: nearest neighbour network, Louvain network detection  
 
-- Section 3: Futher Analaysis
-9.  Comparing clusters in different datasets
-10. Comparing different clustering labels for the same dataset
-11. Compare proportions of cell types
-12. Differential Gene Expression Analysis
+- Section 4: Cluster Annotation
+
+Find cluster markers and look at reference cell type libraries
+Look at expression of known cell type markers
+Automated annotation
+
+- Extra workbook
+  Code for topics covered but not run in the workshop
+  - Ambient RNA detection and adjustment
+  - Doublet identification and removal
+  - Data imputation to account for low read gene sequence drop out
+  
