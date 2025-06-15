@@ -1,0 +1,703 @@
+---
+title: "SingleCellAnalysisWorkshop_2024"
+output:
+  html_document:
+    df_print: paged
+---
+
+# Single Cell Analysis in R 2024 Notebook
+
+Section 1
+1. Loading data
+2. Quality Control
+   2.1 Cell filtering
+   2.2 Doublet assessment
+3. Normalization
+4. Feature selection
+5. Dimensional reduction
+
+
+# Analysis workflow
+
+Load your required libraries.
+You need to have these libraries installed. 
+
+```{r}
+rm(list = ls())
+
+library(Seurat)
+library(tidyverse)
+library(patchwork)
+library(clustree)
+
+```
+
+Read in each of the data objects prepared in the first session 
+
+```{r}
+### assuming your object are in the same working directory as this workbook we don't need to give a full filepathway
+### the default working directory will be the pathway to the current workbook
+CT1 <- readRDS("CTRL1_cleaned.rds") 
+CT2 <- readRDS("CTRL2_cleaned.rds") 
+CT3 <- readRDS("CTRL3_cleaned.rds") 
+CT4 <- readRDS("CTRL4_cleaned.rds") 
+
+```
+
+
+Check out these objects 
+
+```{r}
+cat("Description of the object CT1\nProviding all the information\n")
+CT1
+# we can check individual things
+cat("---------------------------------------------------------------------------------------------------------\n\n")
+CT_dims <- dim(CT1)
+cat("The object has",CT_dims[1], "RNA transcript features and", CT_dims[2],"cells. \n")
+
+cat("How many assays are present?\n")
+Assays(CT1)
+cat("Do we have deminsional reductions?\n")
+Reductions(CT1)
+cat("What layers are present?\n")
+Layers(CT1)
+
+
+```
+
+We can check out the same thing for the other samples
+
+```{r}
+sample_list <- list("CT1" = CT1, "CT2" = CT2, "CT3" = CT3, "CT4" = CT4)
+
+for(seu in sample_list){
+  CT_dims <- dim(seu)
+  obj_name <- levels(seu$orig.ident) # this syntax is used because the metadata slot is set as a factor
+cat("The object",obj_name,"has",CT_dims[1], "RNA transcript features and", CT_dims[2],"cells. \n")
+cat("Assays:\n")
+Assays(seu)
+cat("Reductions:\n")
+Reductions(seu)
+cat("Layers in default assay\n")
+Layers(seu)
+cat("---------------------------------------------------------------------------------------------------------\n\n")
+}
+
+
+```
+
+
+# Selecting features for dimentional reduction
+- Finding "highly variable features"
+
+
+selection.method
+How to choose top variable features. Choose one of :
+
+“vst”: First, fits a line to the relationship of log(variance) and log(mean) using local polynomial regression (loess). Then standardizes the feature values using the observed mean and expected variance (given by the fitted line). Feature variance is then calculated on the standardized values after clipping to a maximum (see clip.max parameter).
+
+“mean.var.plot” (mvp): First, uses a function to calculate average expression (mean.function) and dispersion (dispersion.function) for each feature. Next, divides features into num.bin (default 20) bins based on their average expression, and calculates z-scores for dispersion within each bin. The purpose of this is to identify variable features while controlling for the strong relationship between variability and average expression
+
+“dispersion” (disp): selects the genes with the highest dispersion values
+
+
+```{r}
+# what is a variable feature?
+# using vst method 
+# arguments
+#loess.span - Loess span parameter used when fitting the variance-mean relationship
+#clip.max - After standardization values larger than clip.max will be set to clip.max; default is 'auto' which sets this value to the square root of the number of cells
+#nfeatures - Number of features to select as top variable features; only used when selection.method is set to 'dispersion' or 'vst'
+
+# with the default settings
+CT1 <- FindVariableFeatures(CT1, selection.method = "vst",
+  loess.span = 0.3,
+  clip.max = "auto",
+  num.bin = 20,
+  binning.method = "equal_width",
+  nfeatures = 2000,
+  mean.cutoff = c(0.1, 8),
+  dispersion.cutoff = c(1, Inf),
+  verbose = TRUE)
+
+
+Var_ft_vst <- VariableFeatures(CT1)
+# put the features into a spot where we can recover them later
+CT1@misc$Var_ft_vst <- Var_ft_vst
+
+cat("The number of variable features is ", length(VariableFeatures(CT1)), "\n")
+cat("The top features are:\n")
+head(Var_ft_vst, 10)
+
+
+```
+
+Visualize vst variable features
+
+```{r}
+
+VariableFeatures(CT1) <- CT1@misc$Var_ft_vst
+n_var <- length(VariableFeatures(CT1))
+# Identify the 10 most highly variable genes
+top10vst <- head(VariableFeatures(CT1), 10)
+
+# plot variable features with and without labels
+plot1 <- VariableFeaturePlot(CT1, assay = "RNA", selection.method = "vst")
+LabelPoints(plot = plot1, points = top10vst, repel = TRUE)
+
+
+
+```
+
+
+
+Try the other methods mean.fuction and dispersion.function 
+
+```{r}
+# mean.function
+# Function to compute x-axis value (average expression). Default is to take the mean of the detected (i.e. non-zero) values
+
+CT1 <- FindVariableFeatures(CT1, selection.method = "mean.var.plot",
+  loess.span = 0.3,
+  clip.max = "auto",
+  num.bin = 20,
+  binning.method = "equal_width",
+  mean.cutoff = c(0.1, 8),
+  dispersion.cutoff = c(1, Inf),
+  verbose = TRUE)
+
+
+Var_ft_mvp <- VariableFeatures(CT1)
+cat("The number of variable features is ", length(VariableFeatures(CT1)), "\n")
+cat("The top features are:\n")
+head(Var_ft_mvp, 10)
+CT1@misc$Var_ft_mvp <- Var_ft_mvp
+
+# dispersion.function
+# Function to compute y-axis value (dispersion). Default is to take the standard deviation of all values
+# 
+# num.bin
+# Total number of bins to use in the scaled analysis (default is 20)
+# 
+# binning.method
+# Specifies how the bins should be computed. Available methods are:
+# 
+# “equal_width”: each bin is of equal width along the x-axis (default)
+# 
+# “equal_frequency”: each bin contains an equal number of features (can increase statistical power to detect overdispersed features at high expression values, at the cost of reduced resolution along the x-axis)
+# 
+# verbose
+# show progress bar for calculations
+# 
+# nfeatures
+# Number of features to select as top variable features; only used when selection.method is set to 'dispersion' or
+
+CT1 <- FindVariableFeatures(CT1, selection.method = "dispersion",
+  loess.span = 0.3,
+  clip.max = "auto",
+  num.bin = 20, 
+   nfeatures = 2000,
+  binning.method = "equal_width",
+  mean.cutoff = c(0.1, 8),
+  dispersion.cutoff = c(1, Inf),
+  verbose = TRUE)
+
+Var_ft_dis <- VariableFeatures(CT1)
+cat("The number of variable features is ", length(VariableFeatures(CT1)), "\n")
+cat("The top features are:\n")
+head(Var_ft_dis, 10)
+
+CT1@misc$Var_ft_dis <- Var_ft_dis
+
+
+
+```
+
+
+Plots
+
+```{r}
+
+#### compare 
+VariableFeatures(CT1) <- CT1@misc$Var_ft_mvp
+# Identify the 10 most highly variable genes
+top10mvp <- head(CT1@misc$Var_ft_mvp, 10)
+
+# plot variable features with and without labels
+plot2 <- VariableFeaturePlot(CT1, assay = "RNA", selection.method = "mean.var.plot")
+LabelPoints(plot = plot2, points = top10mvp, repel = TRUE)
+
+
+VariableFeatures(CT1) <- CT1@misc$Var_ft_dis
+# Identify the 10 most highly variable genes
+top10dis <- head(VariableFeatures(CT1), 10)
+
+# plot variable features with and without labels
+plot3 <- VariableFeaturePlot(CT1, assay = "RNA", selection.method = "dispersion")
+LabelPoints(plot = plot3, points = top10dis, repel = TRUE)
+
+
+
+
+```
+
+
+
+
+# merging or integration  
+
+```{r}
+# common features 
+obj <- merge(CT1, y = c(CT2, CT3, CT4))
+# what type of object do we have now?
+cat("This is our merged object: \n")
+obj
+
+cat("\n")
+cat("See the number of cell in each sample: \n")
+table(obj$orig.ident)
+
+```
+What type of object do we have now? (above)
+
+"Warning: Some cell names are duplicated across objects provided. Renaming to enforce unique cell names."
+
+What does the above warning mean? Lets look at the barcodes (cell names)
+```{r}
+
+cell_barcodes_CT1 <- colnames(CT1)
+cat("The CT1 object cell barcodes:\n")
+cell_barcodes_CT1[1:10]
+cat("\n\n")
+cell_barcodes <- colnames(obj)
+cat("The merged object cell barcodes:\n")
+cell_barcodes[1:10]
+
+cat("\n\n")
+cat("Cells in the second sample of the merged object cell barcodes:\n")
+cell_barcodes[6000:6010]
+
+
+```
+What do we notice about the barcodes?
+
+
+# Now will will process the merged object 
+Normalizing data
+Variable features
+Dimensional reduction 
+
+```{r}
+# we run the workflow on the merged object first
+obj <- NormalizeData(obj) # each counts layer (one from each sample) is normalized separately - we ran this before merging and it is not needed here but we will run it anyway
+
+# the default method is "LogNormalize"
+
+```
+
+Each layer was normalized separately: The counts layer for each sample is log normalized
+
+Variable features will now be calculated between the layers - this is already a form of integration 
+If we ran the variable features on each sample they would not be the same. Only features variable within all samples will be included.
+
+We could achieve the same thing if we calculated variable features separately and then took only the overlapping features
+
+```{r}
+obj <- FindVariableFeatures(obj) # Variable features are calculate on a concensus between the data layers
+
+```
+
+```{r}
+all_var_ft <- VariableFeatures(obj)
+cat("The number of variable features in the object is:",length(all_var_ft), "\n")
+head(all_var_ft, 10)
+```
+
+
+We need to scale the common variable features and that will be the input for pca and for integration
+
+```{r}
+
+obj <- ScaleData(obj) # the consensus features are the input for ScaleData - one scale.data layer is created that for the separate layers 
+
+
+```
+
+
+```{r}
+Layers(obj)
+```
+
+# Dimensional reduction with PCA
+
+What is PCA - how does the PCA calculation differ in Seurat?
+
+
+Run the PCA with this function
+Scaled expression of the Variable Features is the starting PCA input
+50 PCs will be calculated by default in this function
+
+
+```{r}
+obj <- RunPCA(obj, assay = "RNA", nfeatures.print = 5, npcs = 50) # scale data is used as the input with only the variable features
+
+```
+
+```{r}
+Reductions(obj)
+```
+
+Look at expression of genes across cells of selected features
+
+```{r}
+DimHeatmap(obj, dims = 1:3, cells = 500, balanced = TRUE)
+
+```
+What are we looking at above? 
+
+Will we continue to use 50 PCs? How to select this?
+```{r}
+ElbowPlot(obj, ndims = 50)
+```
+We can take the bend (inflection point) as a dim cut-off
+
+Lets have a look at how the variability is being capture by the PCs
+
+```{r}
+DimPlot(obj, reduction = "pca", dims = c(1,2))
+DimPlot(obj, reduction = "pca", dims = c(2,3))
+DimPlot(obj, reduction = "pca", dims = c(3,4))
+DimPlot(obj, reduction = "pca", dims = c(4,5))
+
+DimPlot(obj, reduction = "pca", dims = c(21,22))
+DimPlot(obj, reduction = "pca", dims = c(49,50))
+
+```
+
+
+JackStraw is a statistical test but takes a very long time to run
+- we will not run this here
+
+```{r}
+obj <- JackStraw(
+  obj,
+  reduction = "pca",
+  assay = NULL,
+  dims = 50,
+  num.replicate = 50,
+  prop.freq = 0.01,
+  verbose = TRUE,
+  maxit = 1000
+)
+
+obj <- ScoreJackStraw(obj, dims = 1:50)
+
+# Plot JackStraw results
+JackStrawPlot(obj, dims = 1:50)
+
+```
+
+# What is a UMAP?
+
+
+# Run UMAP 
+- remember our variable features were the input to the PCA and the pc value will be the input to the UMAP
+- several arguments in addition to number of PCs (dims) selected will alter the umap
+```{r}
+obj <- RunUMAP(obj, dims = 1:20, reduction.name = "merge_umap_df", n.neighbors = 30)
+# here we used the default setting of 30 neighbours 
+
+obj <- RunUMAP(obj, dims = 1:20, reduction.name = "merge_umap", n.neighbors = 125)
+# here we used the default setting of 30 neighbours 
+
+```
+
+What does our umap look like?
+```{r}
+DimPlot(obj, reduction = "merge_umap_df", group.by = "orig.ident") + ggtitle("k neighbors 30")
+DimPlot(obj, reduction = "merge_umap", group.by = "orig.ident")+ ggtitle("k neighbors 125")
+
+```
+
+
+Data integration
+
+
+```{r}
+
+obj <- IntegrateLayers(
+  object = obj, method = CCAIntegration,
+  orig.reduction = "pca", new.reduction = "integrated.cca",
+  verbose = FALSE
+)
+
+
+
+```
+
+
+cca vs pca
+
+Visualize 
+
+```{r}
+
+pca_p <- DimPlot(obj, reduction = "pca", group.by = "orig.ident") + ggtitle("PCA from merged")
+cca_p <- DimPlot(obj, reduction = "integrated.cca", group.by = "orig.ident") + ggtitle("CCA for integration")
+
+pca_p + cca_p
+
+```
+Does one look better?
+
+
+Join the layers to clean up the object
+
+```{r}
+Layers(obj)
+
+# remember each object has a spearate counts and normalization layer
+obj <- JoinLayers(obj)
+
+Layers(obj)
+Reductions(obj)
+
+
+```
+```{r}
+Layers(obj)
+```
+Scale data is not merged because it this was the separate input scale data but the one "scale.data" value s already there that we made before. 
+
+Lets remove those layers
+```{r}
+
+obj[["RNA"]]$scale.data.CTRL1 <- NULL
+obj[["RNA"]]$scale.data.CTRL2 <- NULL
+obj[["RNA"]]$scale.data.CTRL3 <- NULL
+obj[["RNA"]]$scale.data.CTRL4 <- NULL
+Layers(obj)
+
+```
+
+Now lets make the UMAP from the cca reduction
+
+```{r}
+
+# obj <- RunUMAP(obj, dims = 1:20, reduction = "integrated.cca", reduction.name = "integrated_umap", n.neighbors = 30)
+
+obj <- RunUMAP(obj, dims = 1:20, reduction = "integrated.cca", reduction.name = "integrated_umap", n.neighbors = 125)
+
+# plot the two umaps
+pca_umap <- DimPlot(obj, reduction = "merge_umap", group.by = "orig.ident") + ggtitle("merged UMAP")
+cca_umap <- DimPlot(obj, reduction = "integrated_umap", group.by = "orig.ident") + ggtitle("integrated UMAP")
+
+
+
+```
+
+```{r, fig.width=12}
+pca_umap + cca_umap
+```
+
+
+Clustering - snn graph 
+louvain network detection 
+
+```{r}
+obj <- FindNeighbors(obj, reduction = "integrated.cca", dims = 1:30, k.param = 135)
+obj <- FindClusters(obj, resolution = c(0, 0.005 , 0.01, 0.05, 0.1, 0.25, 0.5, 0.75,1.5))
+obj <- FindClusters(obj, resolution = c(0.0025))
+colnames(obj@meta.data)
+
+```
+
+
+
+```{r}
+clustree(obj, prefix = "RNA_snn_res.")
+```
+
+```{r}
+resolutions = c(0, 0.0025,0.005 , 0.01, 0.05, 0.1, 0.5, 0.9)
+res_vector = paste0("RNA_snn_res.",resolutions)
+
+for(res in res_vector){
+  print(DimPlot(obj, reduction = "integrated_umap", group.by = res))
+}
+
+```
+
+What if we used a different number of neighbours 
+
+```{r}
+obj <- FindNeighbors(obj, reduction = "integrated.cca", dims = 1:30, k.param = 65, graph.name = "kn65_snn")
+obj <- FindClusters(obj, resolution = c(0.005, 0.1,0.5,0.9,1.5), graph.name = "kn65_snn")
+obj <- RunUMAP(obj, reduction = "integrated.cca", dims = 1:30, n.neighbors = 65, 
+                   reduction.name = "kn65_umap")
+
+colnames(obj@meta.data)
+
+
+```
+Have a look at the clustree with the clusters at a different resolution 
+
+```{r}
+
+# re need to change this code:
+clustree(obj, prefix = "RNA_snn_res.")   # how do we change this code to plot only the new clusters?
+ 
+
+
+```
+
+
+```{r}
+# how do we change this code to show different UMAPs?
+resolutions = c(0, 0.0025,0.005 , 0.01, 0.05, 0.1, 0.5, 0.9)
+res_vector = paste0("RNA_snn_res.",resolutions)
+
+for(res in res_vector){
+  print(DimPlot(obj, reduction = "integrated_umap", group.by = res))
+}
+
+
+```
+
+
+
+# Check out our data object and see if we want to remove anything
+
+
+```{r}
+cat("Intergrated object redutions:\n")
+Reductions(obj)
+cat("-----------------------------------------------------------------------------------------------------------------------\n\n")
+cat("Clusters and other metadata:\n")
+colnames(obj@meta.data)
+cat("-----------------------------------------------------------------------------------------------------------------------\n\n")
+cat("Layers:\n")
+Layers(obj)
+
+
+
+```
+
+
+
+Clean up the object 
+
+```{r}
+
+cat("our object has these reductions:\n")
+Reductions(obj) # keep all
+cat("we will keep all the reductions \n\n")
+
+cat("our object has these layers in the default assay (RNA) :\n")
+Layers(obj) # remove the separately scaled data layers
+cat("we will remove the individual scale.data layers \n\n")
+
+cat("our object has these meta data columns which include our clusters:\n")
+colnames(obj@meta.data)
+
+```
+
+Remove extra layers 
+
+```{r}
+# adjust code to make what we want to do and to match current object 
+# be sure to edit code
+
+
+to_remove <- grep("^scale.data.CTRL", names(obj@assays$RNA), value = TRUE)
+
+# Remove those elements
+for (item in to_remove) {
+  obj@assays$RNA[[item]] <- NULL
+}
+Layers(obj) 
+
+```
+
+Remove unwanted meta.data
+
+```{r}
+# we must adjust this to match what data we want to remove
+
+obj@meta.data <- obj@meta.data[, c(1:3,6:7,9:11)]
+colnames(obj@meta.data)
+```
+
+
+# save clustered object for annotation
+
+```{r}
+saveRDS(obj, "Int_Clustered.rds")
+```
+
+
+
+
+
+# how to the UMAP and cluster relate?
+- what if you aren't happy with your UMAP?
+- We can change the visualization without changing the clusters
+  - DO NOT change Variable Features or dims if you want your umap to be representative of the clusters
+- changing the UMAP embedding paramaters will change the visualization only
+
+you can set "a" and "b" or min.dist and spread
+if all are set "a" and "b" will not be used if both min.dist and spread are used
+n.neighbors matching that k.paramater for nearest neighbours usually produces the best results but this can be ultered
+
+
+Lets reduce the number of cells to explore umap parameters faster 
+
+```{r}
+
+Idents(obj) <- "orig.ident"
+seu <- subset(obj, downsample = 200)
+table(seu$orig.ident)
+
+```
+
+
+
+```{r}
+
+# exlplore some paramaters 
+
+# these are the defaults 
+d.n.neigbors = 30
+d.min.dist = 0.3
+d.spread = 1 
+
+seu <- RunUMAP(seu, reduction = "integrated_cca", dims = 1:30, n.neighbors = d.n.neigbors, spread = d.spread, a = 0.8, b = 0.7, reduction.name = "umap")
+DimPlot(seu)
+
+```
+
+Loop through to explore parameters:
+
+```{r}
+a_vector <- c(0.6,0.8)
+b_vector <- c(0.7, 0.9)
+for(a in a_vector){
+  for(b in b_vector){
+    umap_name <- paste0(a,"_",b,"_umap")
+    cat("Creating UMAP with ",a," ",b,"parameters\n")
+    seu <- RunUMAP(seu, reduction = "integrated_cca", dims = 1:30, n.neighbors = d.n.neigbors, spread = d.spread, a = a, b = b, reduction.name = "umap")
+    print(DimPlot(seu, reduction = umap_name))
+  }
+}
+
+```
+
+
+
+
+
+
+
+
+
+

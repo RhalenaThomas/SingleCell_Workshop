@@ -1,0 +1,33 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+# Understanding data structures in R 
+Your output data contains:
+- Read count data  (usually in the form of a .mat file)
+- Barcodes.  
+- Features (gene names for RNAseq) 
+
+After running 10X Genomics CellRanger or Parse Bio TrailMaker (or pipe-split) pipeline you will have these files for each sample you have run.
+Pip-seq and custom droplet seq will need to be run in other pipelines but will have the same outputs. 
+When using public data you will sometime get a counts matrix.  You might have only a counts matrix and not separate files for barcodes and genes. 
+
+The formatting of these can vary.  Also, you will usually have "filtered" and "unfiltered" data.
+
+
+# Parse Bio data has an extra level of meta data because of the sample and well structure
+- the sample information is added in the pipeline
+- you also have your starting well information and can analyze the library preparation steps
+
+
+# Checking out different file types in R
+
+```{r}
+
+
+
+
+```
+
+

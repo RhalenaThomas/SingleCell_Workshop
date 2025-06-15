@@ -23,6 +23,7 @@ Load your required libraries.
 You need to have these libraries installed. 
 
 ```{r}
+rm(list = ls())
 
 library(Seurat)
 library(tidyverse)
