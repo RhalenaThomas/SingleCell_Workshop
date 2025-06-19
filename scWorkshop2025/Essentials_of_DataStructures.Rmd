@@ -1,0 +1,269 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+Understanding the essentials of data structures
+
+# Raw or filtered files?
+
+10X genomics outputs 
+Matrix file
+
+```{r}
+
+# Path to matrix file filtered
+mtx_path <- "~/Library/CloudStorage/OneDrive-McGillUniversity/Documents/Data/scRNAseq/AST23_BrainComm/CellRangerOuts/AST23/raw_feature_bc_matrix/matrix.mtx.gz"
+
+# Read only the header of the .mtx file
+con <- gzfile(mtx_path, "rt")
+header <- readLines(con, n = 100)  # Usually enough
+close(con)
+
+# Extract dimension line (ignoring comments starting with %)
+dims_line <- header[!grepl("^%", header)][1]
+dims <- as.integer(strsplit(dims_line, "\\s+")[[1]])
+
+cat("Raw Matrix Dimensions: ", dims[1], "genes ×", dims[2], "droplets\n")
+
+
+# Path to matrix file filtered
+mtx_path <- "~/Library/CloudStorage/OneDrive-McGillUniversity/Documents/Data/scRNAseq/AST23_BrainComm/CellRangerOuts/AST23/filtered_feature_bc_matrix/matrix.mtx.gz"
+
+# Read only the header of the .mtx file
+con <- gzfile(mtx_path, "rt")
+header <- readLines(con, n = 100)  # Usually enough
+close(con)
+
+# Extract dimension line (ignoring comments starting with %)
+dims_line <- header[!grepl("^%", header)][1]
+dims <- as.integer(strsplit(dims_line, "\\s+")[[1]])
+
+cat("Filtered Matrix Dimensions: ", dims[1], "genes ×", dims[2], "droplets\n")
+
+```
+
+
+In Parse Bio
+```{r}
+
+# Path to matrix file filtered
+mtx_path <- "~/Downloads/SC_Workshop2025/ParseExample/DGE_unfiltered/DGE.mtx"
+
+# Read only the header of the .mtx file
+con <- gzfile(mtx_path, "rt")
+header <- readLines(con, n = 100)  # Usually enough
+close(con)
+
+# Extract dimension line (ignoring comments starting with %)
+dims_line <- header[!grepl("^%", header)][1]
+dims <- as.integer(strsplit(dims_line, "\\s+")[[1]])
+
+cat("Raw Matrix Dimensions: ", dims[2], "genes ×", dims[1], "droplets\n")
+
+
+# Path to matrix file filtered
+mtx_path <- "~/Downloads/SC_Workshop2025/ParseExample/DGE_filtered/DGE.mtx"
+
+# Read only the header of the .mtx file
+con <- gzfile(mtx_path, "rt")
+header <- readLines(con, n = 100)  # Usually enough
+close(con)
+
+# Extract dimension line (ignoring comments starting with %)
+dims_line <- header[!grepl("^%", header)][1]
+dims <- as.integer(strsplit(dims_line, "\\s+")[[1]])
+
+cat("Filtered Matrix Dimensions: ", dims[2], "genes ×", dims[1], "droplets\n")
+
+
+
+
+
+```
+
+
+
+Have a look at the matrix files
+
+
+
+10X
+Barcode files 
+
+```{r}
+raw_10X_path <- "~/Library/CloudStorage/OneDrive-McGillUniversity/Documents/Data/scRNAseq/AST23_BrainComm/CellRangerOuts/AST23/raw_feature_bc_matrix/"
+
+# Load necessary package
+library(data.table)
+
+
+# --- Load Barcodes ---
+barcode_path <- file.path(raw_10X_path, "barcodes.tsv.gz")
+barcodes <- fread(barcode_path, header = FALSE)
+
+cat("Raw Barcodes: ", nrow(barcodes), " total\n")
+print(head(barcodes))
+
+# --- Load Features ---
+# This could be features.tsv.gz or genes.tsv.gz depending on version
+feature_path <- file.path(raw_10X_path, "features.tsv.gz")
+features <- fread(feature_path, header = FALSE)
+
+cat("Raw Features (genes): ", nrow(features), " total\n")
+print(head(features))
+
+
+  
+  
+```
+
+What does the matrix object look like?
+
+```{r}
+str(mat)
+```
+
+
+
+
+
+```{r}
+
+# Read sparse matrix
+matrix_path <- file.path(raw_10X_path, "/matrix.mtx.gz")
+mat <- readMM(gzfile(matrix_path))
+
+# Preview first 5 rows and columns (sparse matrix subset)
+mat_small <- mat[1:5, 1:5]
+print(mat_small)
+
+# Add row and column names - features X cells 
+rownames(mat) <- features[[2]]  # gene names (2nd column)  10X
+colnames(mat)  <- barcodes[[1]] 
+
+# Preview first 5 rows and columns (sparse matrix subset)
+mat_small <- mat[1:5, 1:5]
+
+print(mat_small)
+
+```
+
+In ParseBio
+
+```{r}
+# library(Matrix)
+parse_dir <- "~/Downloads/SC_Workshop2025/ParseExample/DGE_filtered/"
+
+matrix_path <- file.path(parse_dir, "DGE.mtx")
+
+# Read sparse matrix
+mat_p <- readMM(gzfile(matrix_path))
+
+# Preview first 5 rows and columns (sparse matrix subset)
+mat_small_p <- mat_p[1:5, 1:5]
+
+print(mat_small_p)
+
+feature_path <- file.path(parse_dir, "all_genes.csv")
+barcode_path <- file.path(parse_dir, "cell_metadata.csv")
+
+# Load barcodes and features (genes)
+barcodes_p <- fread(barcode_path, header = TRUE)[[1]]     # different then 10X
+features_p <- fread(feature_path, header = TRUE)
+
+
+# Add row and column names - these are inverted compared to 10X
+colnames(mat_p)  <- features_p[[2]]  # gene names (2nd column) the same as 10X
+rownames(mat_p) <- barcodes_p 
+
+# Preview first 5 rows and columns (sparse matrix subset)
+mat_small_p <- mat_p[1:5, 1:5]
+
+print(mat_small_p)
+
+```
+
+What do the feature and barcode files look like in Parse
+
+```{r}
+head(features_p)
+
+```
+
+
+```{r}
+class(barcodes_p)
+barcodes_p[1:10] 
+```
+
+
+```{r}
+str(mat_p)
+```
+
+# make a seurat object from ParseBio
+- The code above is from the original pipeline and now the file names have changed
+
+```{r}
+
+folderpath <- "~/Downloads/SC_Workshop2025/ParseExample/DGE_filtered"
+metafilepath <- file.path(folderpath, "cell_metadata.csv")
+matrixfile <- file.path(folderpath, pattern = "count_matrix.mtx")
+featuresfile <- file.path(folderpath, "all_genes.csv")
+
+# make the expression matrix
+expression_matrix <- ReadMtx(
+  mtx = matrixfile, 
+  cells = metafilepath, 
+  features = featuresfile, 
+  cell.column = 1, 
+  feature.column = 2, 
+  cell.sep = ",", 
+  feature.sep = ",", 
+  skip.cell = 1, 
+  skip.feature = 1, 
+  mtx.transpose = TRUE  # we need to make to transpose to read into the Seurat object
+)
+
+# Have a look at the metadata file that has the cell barcodes
+metadata.parse <- read.csv(metafilepath) 
+
+dim(metadata.parse)
+
+head(metadata.parse,10)
+
+
+
+```
+Notice that bc1_wind, bc2_wind, bc3_wind combine to make the barcode
+
+```{r}
+# how does the parse expression matrix look with the new chemistry and pipeline
+str(expression_matrix)
+```
+
+
+# Make the seurat object from the expression matrix
+
+```{r}
+
+# for a feature to be included it must appear in at least 1 cell
+# for a barcode/cell to be included it must contain at least 10 features 
+# we are using the filtered data so this should always be the case for the barcodes
+seurat_object <- CreateSeuratObject(counts = expression_matrix, min.cells = 1, min.features = 10)
+# add the metadata
+
+metadata.parse <- read.csv(metafilepath, row.names = 1)
+seurat_object <- AddMetaData(seurat_object, metadata= metadata.parse)
+
+seurat_object  
+  
+
+
+```
+
+
+
+
+

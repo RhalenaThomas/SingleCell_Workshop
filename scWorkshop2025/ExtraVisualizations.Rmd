@@ -1,0 +1,355 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+Bonus visualization or comparisons
+
+```{r}
+rm(list = ls())
+
+library(Seurat)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(Matrix)
+
+seu <- readRDS("/Users/rhalenathomas/Downloads/SC_Workshop2025/CTRL1_cleaned.rds")
+seu
+
+```
+
+
+
+# Visualize feature counts and variability
+```{r}
+
+# Compute variance of all genes manually (if not using Seurat's variable features)
+
+expr_mat <- GetAssayData(seu, assay = "RNA", layer = "counts")
+expr_mat[1:8,1:5]
+# Step 1: Get means
+gene_means <- rowMeans(expr_mat)
+
+# Step 2: Compute squared deviations and mean
+gene_vars <- as.numeric(rowMeans(expr_mat^2) - gene_means^2)
+names(gene_vars) <- rownames(expr_mat)
+gene_vars[1:10]
+
+df <- data.frame(gene = names(gene_vars), variance = gene_vars)
+
+# Histogram
+hist(df$variance, breaks = 100, col = "steelblue",
+     main = "Distribution of Gene Variance",
+     xlab = "Variance")
+
+summary(gene_vars)
+
+
+
+hist(log10(gene_vars[gene_vars > 0]), breaks = 100, col = "tomato",
+     main = "Log10 Gene Variance", xlab = "log10(Variance)")
+
+
+# with pseudo counts
+log_gene_vars <- log10(gene_vars + 1e-6)
+hist(log_gene_vars, breaks = 100, col = "darkred",
+     main = "Log10 Gene Variance", xlab = "log10(Variance)")
+
+
+
+```
+log10 = 0 is equale to a variance of 1
+log10 = -2 is 0.01
+log10 = -4 is 0.0001
+
+
+
+
+```{r}
+
+
+ft <- gene_vars[gene_vars > 0]
+quant <- quantile(gene_vars, 0.95)
+hist(ft[ft < quant], breaks = 100, col = "steelblue",
+     main = "Gene Variance (95% trimmed)", xlab = "Variance")
+
+quant <- quantile(gene_vars, 0.90)
+hist(ft[ft < quant], breaks = 100, col = "steelblue",
+     main = "Gene Variance (90% trimmed)", xlab = "Variance")
+
+
+quant <- quantile(gene_vars, 0.75)
+hist(ft[ft < quant], breaks = 100, col = "steelblue",
+     main = "Gene Variance (75% trimmed)", xlab = "Variance")
+
+
+
+
+
+```
+
+```{r}
+library(ggplot2)
+plus_gene_vars = gene_vars + 0.0000000001
+
+
+df <- data.frame(
+  gene = rownames(expr_mat),
+  mean = gene_means,
+  variance = plus_gene_vars
+)
+
+df_ft <- df[df$variance > 0.00001 ,]
+
+ggplot(df, aes(x = mean, y = variance)) +
+  geom_point(alpha = 0.3, color = "steelblue") +
+  scale_x_log10() +
+  scale_y_log10() +
+  labs(title = "Gene Dispersion", x = "Mean Expression", y = "Variance") +
+  theme_minimal()
+
+
+ggplot(df, aes(x = mean, y = variance)) +
+  geom_point(alpha = 0.3, color = "steelblue") +
+  labs(title = "Gene Dispersion", x = "Mean Expression", y = "Variance") +
+  theme_minimal()
+
+
+ggplot(df, aes(x = mean, y = variance)) +
+  geom_point(alpha = 0.3, color = "steelblue") +
+  scale_y_log10() +
+  labs(title = "Gene Dispersion", x = "Mean Expression", y = "Variance") +
+  theme_minimal()
+
+
+
+ggplot(df_ft, aes(x = mean, y = variance)) +
+  geom_point(alpha = 0.3, color = "steelblue") +
+  scale_x_log10() +
+  scale_y_log10() +
+  labs(title = "Gene Dispersion", x = "Mean Expression", y = "Variance") +
+  theme_minimal()
+
+
+ggplot(df_ft, aes(x = mean, y = variance)) +
+  geom_point(alpha = 0.3, color = "steelblue") +
+  labs(title = "Gene Dispersion", x = "Mean Expression", y = "Variance") +
+  theme_minimal()
+
+
+ggplot(df_ft, aes(x = mean, y = variance)) +
+  geom_point(alpha = 0.3, color = "steelblue") +
+  scale_y_log10() +
+  labs(title = "Gene Dispersion", x = "Mean Expression", y = "Variance") +
+  theme_minimal()
+
+
+
+
+```
+
+
+
+
+
+
+
+```{r}
+# larger variance 
+
+quant <- quantile(gene_vars, 0.75)
+large_var <- gene_vars[gene_vars > quant]
+summary(large_var)
+
+hist(large_var[large_var < 3], breaks = 100, col = "steelblue",
+     main = "Gene Variance above 75% percentile and lower than 3", xlab = "Variance")
+
+
+
+quant <- quantile(gene_vars, 0.95)
+large_var <- gene_vars[gene_vars > quant]
+summary(large_var)
+hist(large_var[large_var < 200], breaks = 100, col = "steelblue",
+     main = "Gene Variance above 95% percentile and lower than 200", xlab = "Variance")
+
+
+
+quant <- quantile(gene_vars, 0.99)
+large_var <- gene_vars[gene_vars > quant]
+summary(large_var)
+hist(large_var[large_var < 3000], breaks = 100, col = "steelblue",
+     main = "Gene Variance above 99% percentile ", xlab = "Variance")
+
+
+
+```
+
+
+
+
+
+
+
+```{r}
+# cumulative variance plot
+sorted_vars <- sort(gene_vars, decreasing = TRUE)
+cumvar <- cumsum(sorted_vars) / sum(sorted_vars)
+
+plot(cumvar, type = "l", lwd = 2, col = "darkgreen",
+     xlab = "Top N Genes", ylab = "Cumulative Variance Explained",
+     main = "Cumulative Variance Plot")
+```
+
+How "vst" variance colculaton works
+
+```{r}
+# expr_mat was taken above
+means <- rowMeans(expr_mat)
+vars <- as.numeric(rowMeans(expr_mat^2) - gene_means^2)
+
+
+# Step 2: Log transform
+log_means <- log10(means)  # 
+log_vars <- log10(vars)
+
+# Step 3: Fit loess curve
+fit <- loess(log_vars ~ log_means)
+
+# Step 4: Predict expected variance
+expected_log_vars <- predict(fit)
+
+# Step 5: Plot
+plot(log_means, log_vars, pch = 16, col = rgb(0.2, 0.4, 0.8, 0.3),
+     xlab = "log10(Mean)", ylab = "log10(Expected Variance)", main = "Mean-Variance with LOESS Fit")
+lines(log_means[order(log_means)], expected_log_vars[order(log_means)],
+      col = "red", lwd = 2)
+
+```
+
+Mean variance plot method
+
+```{r}
+
+# 3. Compute "dispersion" (variance / mean)
+dispersion <- (gene_vars + 0.00000001) / gene_means
+
+df <- data.frame(
+  gene = rownames(expr_mat),
+  mean = gene_means,
+  variance = gene_vars,
+  dispersion = dispersion
+)
+
+df_ft <- df[!is.nan(df$dispersion), ]
+df_ft <- df[is.finite(df$dispersion) & !is.na(df$dispersion), ]
+
+
+
+ggplot(df_ft, aes(x = mean, y = dispersion)) +
+  geom_point(alpha = 0.3, color = "steelblue") +
+  scale_x_log10() +
+  scale_y_log10() +
+  labs(x = "Log10 Mean Expression", y = "Log10 Dispersion") +
+  theme_minimal()
+
+
+# Set your MVP thresholds
+mean_cutoff <- c(0.1, 8)
+dispersion_cutoff <- c(1, 50000)  # Inf will not be plotted as a line
+
+# Make the plot
+ggplot(df_ft, aes(x = mean, y = dispersion)) +
+  geom_point(alpha = 0.3, color = "steelblue") +
+  scale_x_log10() +
+  scale_y_log10() +
+  # Add vertical lines for mean cutoff
+  geom_vline(xintercept = log10(mean_cutoff[1]), linetype = "dashed", color = "darkred") +
+    geom_vline(xintercept = log10(mean_cutoff[2]), linetype = "dashed", color = "darkred") +
+  # Add horizontal lines for dispersion cutoff (excluding Inf)
+  geom_hline(yintercept = log10(dispersion_cutoff[1]), linetype = "dashed", color = "darkgreen") +
+  labs(x = "Log10 Mean Expression", y = "Log10 Dispersion") +
+  theme_minimal()
+
+
+
+ggplot(df_ft, aes(x = mean, y = dispersion)) +
+  geom_point(alpha = 0.3, color = "steelblue") +
+
+  # Add vertical lines for mean cutoff
+  geom_vline(xintercept = mean_cutoff[1], linetype = "dashed", color = "darkred") +
+    geom_vline(xintercept = mean_cutoff[2], linetype = "dashed", color = "darkred") +
+  # Add horizontal lines for dispersion cutoff (excluding Inf)
+  geom_hline(yintercept = dispersion_cutoff[1], linetype = "dashed", color = "darkgreen") +
+  labs(x = "Mean Expression", y = "Dispersion") +
+  theme_minimal()
+
+
+
+
+```
+
+Plot dispersion 
+
+```{r}
+
+# Bin genes by mean expression
+df_bin <- df_ft %>%
+  mutate(bin = ntile(mean, 20)) %>%  # 20 bins like Seurat
+  group_by(bin) %>%
+  mutate(scaled_dispersion = scale(dispersion)[,1]) %>%
+  ungroup()
+
+# Plot: log10 mean vs. scaled dispersion
+ggplot(df_bin, aes(x = mean, y = scaled_dispersion)) +
+  geom_point(alpha = 0.3, color = "steelblue") +
+  scale_x_log10() +
+  labs(
+    x = "Log10 Mean Expression",
+    y = "Scaled Dispersion (Z-score)",
+    title = "Dispersion Method (Seurat)"
+  ) +
+  theme_minimal()
+
+
+```
+
+
+
+
+
+
+# make an upset plot comparing the 3 FindVariableFeatures options
+```{r}
+library(UpSetR)
+
+upset(fromList(list(vst = Var_ft_vst, mvp = Var_ft_mvp, disp = Var_ft_dis)))
+
+
+```
+
+
+Plot the interesecting features and label the top intersecting features
+
+```{r}
+
+```
+
+
+
+Make an upset plot for the variable features for each sample and the merged object
+
+```{r}
+
+upset(fromList(list(C1 = Var_C1, C2 = Var_C2, C3 = Var_C3, C4 = Var_C4, Combined = Var_obj)))
+
+```
+
+
+
+
+
+
+
+
+

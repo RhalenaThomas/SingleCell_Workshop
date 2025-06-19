@@ -243,7 +243,6 @@ LabelPoints(plot = plot3, points = top10dis, repel = TRUE)
 
 
 
-
 # merging or integration  
 
 ```{r}
@@ -307,6 +306,7 @@ obj <- FindVariableFeatures(obj) # Variable features are calculate on a concensu
 
 ```
 
+
 ```{r}
 all_var_ft <- VariableFeatures(obj)
 cat("The number of variable features in the object is:",length(all_var_ft), "\n")
@@ -342,6 +342,15 @@ Scaled expression of the Variable Features is the starting PCA input
 obj <- RunPCA(obj, assay = "RNA", nfeatures.print = 5, npcs = 50) # scale data is used as the input with only the variable features
 
 ```
+
+* New code chunk
+```{r}
+
+
+```
+
+
+
 
 ```{r}
 Reductions(obj)
@@ -413,9 +422,13 @@ obj <- RunUMAP(obj, dims = 1:20, reduction.name = "merge_umap", n.neighbors = 12
 ```
 
 What does our umap look like?
-```{r}
-DimPlot(obj, reduction = "merge_umap_df", group.by = "orig.ident") + ggtitle("k neighbors 30")
-DimPlot(obj, reduction = "merge_umap", group.by = "orig.ident")+ ggtitle("k neighbors 125")
+```{r, fig.width=8}
+# update your code 
+
+p30 <- DimPlot(obj, reduction = "merge_umap_df", group.by = "orig.ident") + ggtitle("k neighbors 30")
+p125 <- DimPlot(obj, reduction = "merge_umap", group.by = "orig.ident")+ ggtitle("k neighbors 125")
+
+p30 + p125
 
 ```
 
@@ -435,6 +448,16 @@ obj <- IntegrateLayers(
 
 ```
 
+
+# did our code crash?  # is this taking too long to run?
+Lets read in the I already processed 
+```{r}
+# do not if you don't need to - this will save over the object you just made 
+obj <- readRDS("Int_Clustered.rds")
+obj
+Reductions(obj)
+
+```
 
 cca vs pca
 
@@ -460,13 +483,10 @@ Layers(obj)
 obj <- JoinLayers(obj)
 
 Layers(obj)
-Reductions(obj)
-
 
 ```
-```{r}
-Layers(obj)
-```
+
+
 Scale data is not merged because it this was the separate input scale data but the one "scale.data" value s already there that we made before. 
 
 Lets remove those layers
@@ -478,13 +498,14 @@ obj[["RNA"]]$scale.data.CTRL3 <- NULL
 obj[["RNA"]]$scale.data.CTRL4 <- NULL
 Layers(obj)
 
+
 ```
 
 Now lets make the UMAP from the cca reduction
 
 ```{r}
 
-# obj <- RunUMAP(obj, dims = 1:20, reduction = "integrated.cca", reduction.name = "integrated_umap", n.neighbors = 30)
+#obj <- RunUMAP(obj, dims = 1:20, reduction = "integrated.cca", reduction.name = "integrated_umap", n.neighbors = 30)
 
 obj <- RunUMAP(obj, dims = 1:20, reduction = "integrated.cca", reduction.name = "integrated_umap", n.neighbors = 125)
 
@@ -496,6 +517,7 @@ cca_umap <- DimPlot(obj, reduction = "integrated_umap", group.by = "orig.ident")
 
 ```
 
+
 ```{r, fig.width=12}
 pca_umap + cca_umap
 ```
@@ -505,8 +527,8 @@ Clustering - snn graph
 louvain network detection 
 
 ```{r}
-obj <- FindNeighbors(obj, reduction = "integrated.cca", dims = 1:30, k.param = 135)
-obj <- FindClusters(obj, resolution = c(0, 0.005 , 0.01, 0.05, 0.1, 0.25, 0.5, 0.75,1.5))
+obj <- FindNeighbors(obj, reduction = "integrated.cca", dims = 1:30, k.param = 125)
+obj <- FindClusters(obj, resolution = c(0, 0.005 , 0.01, 0.05, 0.1, 0.25, 0.5, 0.75, 1.5))
 obj <- FindClusters(obj, resolution = c(0.0025))
 colnames(obj@meta.data)
 
@@ -525,6 +547,7 @@ res_vector = paste0("RNA_snn_res.",resolutions)
 for(res in res_vector){
   print(DimPlot(obj, reduction = "integrated_umap", group.by = res))
 }
+
 
 ```
 
@@ -660,7 +683,7 @@ table(seu$orig.ident)
 
 ```
 
-
+FIX THE CODE
 
 ```{r}
 
@@ -671,31 +694,90 @@ d.n.neigbors = 30
 d.min.dist = 0.3
 d.spread = 1 
 
-seu <- RunUMAP(seu, reduction = "integrated_cca", dims = 1:30, n.neighbors = d.n.neigbors, spread = d.spread, a = 0.8, b = 0.7, reduction.name = "umap")
+seu <- RunUMAP(seu, reduction = "integrated_cca", dims = 1:30, n.neighbors = d.n.neigbors, spread = d.spread, a = 0.8, b = 0.7, reduction.name = "umap") # here we get an error why? 
+
+cat("Our error says this reduction is not found?  Why not?  Lets look at what reductions are there:\n")
+Reductions(obj)
+
+
+seu <- RunUMAP(seu, reduction = "integrated.cca", dims = 1:30, n.neighbors = d.n.neigbors, spread = d.spread, a = 0.8, b = 0.7, reduction.name = "umap")
 DimPlot(seu)
+
+
+
 
 ```
 
+REMEMBER TO FIX THE CODE !!!!!! 
 Loop through to explore parameters:
 
 ```{r}
-a_vector <- c(0.6,0.8)
-b_vector <- c(0.7, 0.9)
+a_vector <- c(0.5,1)
+b_vector <- c(0.3, 0.9,1.2,1.5)
 for(a in a_vector){
   for(b in b_vector){
-    umap_name <- paste0(a,"_",b,"_umap")
+    umap_name <- paste0("a",a,"b",b,"_umap")
     cat("Creating UMAP with ",a," ",b,"parameters\n")
-    seu <- RunUMAP(seu, reduction = "integrated_cca", dims = 1:30, n.neighbors = d.n.neigbors, spread = d.spread, a = a, b = b, reduction.name = "umap")
+    key_name = paste0("UMAP",a,".",b,"_")
+    seu <- RunUMAP(seu, reduction = "integrated.cca", dims = 1:30, n.neighbors = d.n.neigbors, spread = d.spread, a = a, b = b, reduction.name = umap_name, reduction.key = key_name)
     print(DimPlot(seu, reduction = umap_name))
   }
 }
 
 ```
 
+What about with distance and spread changed instead?
+
+
+```{r}
+
+# what should we change?
+
+a_vector <- c(0.5,1.5)
+b_vector <- c(0.3, 0.9)
+for(a in a_vector){
+  for(b in b_vector){
+    umap_name <- paste0("a",a,"b",b,"_umap")
+    cat("Creating UMAP with ",a," ",b,"parameters\n")
+    key_name = paste0("UMAP",a,".",b,"_")
+    seu <- RunUMAP(seu, reduction = "integrated.cca", dims = 1:30, n.neighbors = d.n.neigbors, spread = d.spread, a = a, b = b, reduction.name = umap_name, reduction.key = key_name)
+    print(DimPlot(seu, reduction = umap_name))
+  }
+}
 
 
 
 
+
+
+
+
+```
+
+
+This controls how tightly the embedding is allowed compress points together. Larger values ensure embedded points are more evenly distributed, while smaller values allow the algorithm to optimize more accurately with regard to local structure. Sensible values are in the range 0.001 to 0.5.
+
+
+
+Changed 
+
+```{r}
+
+d_vector <- c(0.005, 0.05,0.5)
+s_vector <- c(0.5, 1, 10) # how are the points scaled? 
+for(d in d_vector){
+  for(s in s_vector){
+    umap_name <- paste0("dist",d,"spread",b,"_umap")
+    cat("Creating UMAP with min.dist",d,"and spread",s,"parameters\n")
+    key_name = paste0("UMAPd",d,"s",s,"_")
+    seu <- RunUMAP(seu, reduction = "integrated.cca", dims = 1:20, n.neighbors = d.n.neigbors, spread = s, min.dist = d, reduction.name = umap_name, reduction.key = key_name)
+    print(DimPlot(seu, reduction = umap_name))
+  }
+}
+
+
+
+```
 
 
 
