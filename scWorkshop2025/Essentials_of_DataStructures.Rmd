@@ -263,7 +263,16 @@ seurat_object
 
 ```
 
+See in the metadata
 
+```{r}
+colnames(seurat_object@meta.data)
+```
+
+
+```{r}
+unique(seurat_object$bc2_wind)
+```
 
 
 
