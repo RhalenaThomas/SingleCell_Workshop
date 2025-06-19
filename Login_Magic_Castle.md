@@ -8,7 +8,7 @@ ls
 
 ```
 
-Is there a "R" that is blue?  
+Is there a "R" that is blue?  If yes you need to remove it.  If NO go to the next step
 
 ```
 rm -r R
