@@ -415,7 +415,7 @@ DimPlot(seu_int, reduction = "umap.cca", group.by = "round3_celltype", label = T
 ```
 
 ##########################################
-Method 6. Asses pan-dataset cell type similarity
+Method 6. Assess pan-dataset cell type similarity
 ##########################################
 We cannot run this code due to library issues. However, the code is provided below in case you want to use it for your personal analyses in the future. 
 
