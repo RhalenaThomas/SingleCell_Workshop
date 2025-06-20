@@ -1,0 +1,456 @@
+---
+title: "SCC Workshop Part 3"
+output: html_document
+date: "2025-06-20"
+---
+
+---
+title: "SCC Workshop Part 3"
+output: html_document
+date: "2025-06-20"
+---
+
+Load required libraries
+```{r}
+library(Seurat) 
+library(withr)
+library(ggplot2)
+library(backports)
+library(ggpubr)
+library(tidyr)
+library(stringr)
+library(dplyr)
+library(rstatix)
+library(remotes)
+library(labeling)
+library(RColorBrewer)
+library(readr)
+```
+
+Read in our integrated Seurat object and view its contents
+```{r}
+## Read in the object
+seu_int <- readRDS('/home/moya90/projects/def-sponsor00/workshop_samples/Michael/data/Int_Clustered.rds')
+
+## View the object
+str(seu_int)
+
+# counts: Raw counts 
+# data: Normalized expression data (log-transformed)
+# scale.data: Scaled and centered data
+```
+
+Define parameters
+```{r}
+## View clustering resolution options
+str(seu_int@meta.data)
+
+## set cell identity to the clustering resolution that we selected
+Idents(seu_int) <- "RNA_snn_res.0.1"
+
+## Print a UMAP
+DimPlot(seu_int, reduction = "umap.cca", group.by = "RNA_snn_res.0.1", label = TRUE, label.size = 3, repel = TRUE) + NoLegend() + ggtitle("Round 1 cell type annotations")
+```
+
+##########################################
+Method 1: Identify cluster marker genes
+##########################################
+```{r}
+## Identify cluster marker
+ClusterMarkers <- FindAllMarkers(seu_int, only.pos = TRUE) ## DO NOT RUN THIS -- takes too long
+
+## Save the cluer marker genes for future use
+write.csv(ClusterMarkers,"ClusterMarkers.csv") ## DO NOT RUN THIS
+```
+
+```{r}
+## Read in the previously computed cluster marker genes
+ClusterMarkers <- read.csv('/home/moya90/projects/def-sponsor00/workshop_samples/Michael/outs/ClusterMarkers.csv')
+
+## Identify top n marker genes for each cluster 
+top50 <- ClusterMarkers %>% group_by(cluster) %>% top_n(n=50, wt = avg_log2FC)  
+
+## Scale the data for visualization purposes -- > We do not have enough memory to run this. 
+#all.genes <- rownames(seu_int)
+#seu_int <- ScaleData(seu_int, features = all.genes)
+
+
+## Print heatmap of top marker genes
+heat_map<-DoHeatmap(seu_int, features = top50$gene, size=3, angle =90, group.bar.height = 0.02, group.by = "RNA_snn_res.0.1")
+
+heat_map
+```
+
+##########################################
+Method 2: Gene set enrichment analysis
+##########################################
+We cannot run this here because we do not have access to the internet. I will run it on my personal computer. The code is presented below in case you want to use it for your personal analyses in the future. 
+
+## DO NOT RUN THIS NEXT CHUNK, IT WILL NOT WORK WITHOUT INTERNET CONNECTION. 
+``` {r}
+## Load required libraries for GSEA
+library(enrichR)
+library(ggrepel)
+library(ggplot2)
+library(stringr)
+library(clusterProfiler)
+library(enrichplot)
+library(organism, character.only = TRUE)
+require(DOSE)
+library(stringr)
+library(dplyr)
+
+## Read in DEG file.
+cluster_marker <- read.csv('ClusterMarkers.csv') 
+
+## Create directories based on the clusters present in the csv file
+dir.create("enrichR2") 
+for (i in unique(cluster_marker$cluster)) {
+  dir.create(paste0("/enrichR2/clust",i))
+}
+
+## We will query the "Azimuth_Cell_Types_2021" library and run a loop for each cluster in our dataset.
+for (i in unique(cluster_marker$cluster)) {
+    j  = "Azimuth_Cell_Types_2021"
+    setwd(paste0("//Users/mfiorini/Desktop/Single cell club/Workshop/Cell type annotations/enrichR2/clust",i))
+    N1.c0 <- cluster_marker %>% dplyr::filter(cluster == i & avg_log2FC > 0)
+    genes <- N1.c0$gene
+    N1.c0.Er <- enrichr(genes, databases = j )
+    if(is.null(N1.c0.Er)) next
+    plotEnrich(N1.c0.Er[[1]], showTerms = 20, numChar = 40, y = "Count", orderBy = "P.value") +
+      ggtitle(paste0(j, " cluster ", i))
+    ggsave(file = paste0("plotenrich_clust_",i, "_", j,".pdf"))
+    N1.Er.genes.1 <- N1.c0.Er[[1]] %>% dplyr::select(Term, Genes, Combined.Score)
+    write.csv(N1.Er.genes.1,paste0("Er_genes_clust_",i,"_",j,".csv"))
+
+}
+
+## CellMarker_Augmented_2021
+for (i in unique(cluster_marker$cluster)) {
+  j  = "CellMarker_Augmented_2021"
+  setwd(paste0("//Users/mfiorini/Desktop/Single cell club/Workshop/Cell type annotations/enrichR2/clust",i))
+  N1.c0 <- cluster_marker %>% dplyr::filter(cluster == i & avg_log2FC > 0)
+  genes <- N1.c0$gene
+  N1.c0.Er <- enrichr(genes, databases = j )
+  if(is.null(N1.c0.Er)) next
+  plotEnrich(N1.c0.Er[[1]], showTerms = 20, numChar = 40, y = "Count", orderBy = "P.value") +
+    ggtitle(paste0(j, " cluster ", i))
+  ggsave(file = paste0("plotenrich_clust_",i, "_", j,".pdf"))
+  N1.Er.genes.1 <- N1.c0.Er[[1]] %>% dplyr::select(Term, Genes, Combined.Score)
+  write.csv(N1.Er.genes.1,paste0("Er_genes_clust_",i,"_",j,".csv"))
+  
+}
+
+## Descartes_Cell_Types_and_Tissue_2021
+for (i in unique(cluster_marker$cluster)) {
+  j  = "Descartes_Cell_Types_and_Tissue_2021"
+  setwd(paste0("//Users/mfiorini/Desktop/Single cell club/Workshop/Cell type annotations/enrichR2/clust",i))
+  N1.c0 <- cluster_marker %>% dplyr::filter(cluster == i & avg_log2FC > 0)
+  genes <- N1.c0$gene
+  N1.c0.Er <- enrichr(genes, databases = j )
+  if(is.null(N1.c0.Er)) next
+  plotEnrich(N1.c0.Er[[1]], showTerms = 20, numChar = 40, y = "Count", orderBy = "P.value") +
+    ggtitle(paste0(j, " cluster ", i))
+  ggsave(file = paste0("plotenrich_clust_",i, "_", j,".pdf"))
+  N1.Er.genes.1 <- N1.c0.Er[[1]] %>% dplyr::select(Term, Genes, Combined.Score)
+  write.csv(N1.Er.genes.1,paste0("Er_genes_clust_",i,"_",j,".csv"))
+  
+}
+
+```
+
+##########################################
+Method 3. Visualize known markers
+##########################################
+```{R}
+## Features that we want to evaluate
+par_select_features_list= c("AQP4", "GFAP", "CLDN5", "FLT1", "CD74", "C3", "MOBP", "MOG", "VCAN", "PDGFRA", "SLC17A6", "GAD2", "TH", "SLC6A3", "DDC")
+
+## Astrocyte: AQP4, GFAP
+## Endothelial: CLDN5, FLT1
+## Microglia: CD74, C3
+## Oligodendrocytes: MOBP, MOG
+## OPC: VCAN, PDGFRA
+## Pericyte: COL1A2, PDGFRB
+## Neurons: SLC17A6, GAD2
+## DaNeurons: TH, SLC6A3, DDC
+
+## Dotplot from Seurat
+dot_plot <- DotPlot(seu_int, features = par_select_features_list, group.by = 'RNA_snn_res.0.1')
+
+## Set dotplot object as dataframe
+dot_plot2 <- data.frame(dot_plot$data)
+
+## Set feature factor level
+dot_plot2$features.plot <- factor(dot_plot2$features.plot, levels = c("AQP4", "GFAP", "CLDN5", "FLT1", "CD74", "C3", "MOBP", "MOG", "VCAN", "PDGFRA", "SLC17A6", "GAD2", "TH", "SLC6A3", "DDC"))
+
+## Set color code
+blups <- rev(brewer.pal(11, "RdBu"))
+
+## Plot
+ggplot(dot_plot2, aes(x = features.plot , y = id, size = pct.exp, colour = avg.exp.scaled)) + 
+geom_point() +
+theme_classic() +
+theme(
+axis.text.x = element_text(angle=45, hjust = 1),
+axis.line.y = element_blank(),
+axis.ticks.y = element_blank(),
+axis.text.y = element_text(size =12, colour = "black"),
+axis.title = element_text(face="bold", size =12),
+legend.text = element_text( size =10),
+legend.title = element_text( size= 10),
+legend.position = "right") +
+scale_colour_gradientn(colors = blups, values = scales::rescale(c(-1,  0, 3)), na.value = "white")+
+scale_size(guide = guide_legend(direction = "vertical")) +
+ylab("") + xlab("") +
+guides(colour = guide_colorbar("Average expression", title.position = "top"), size = guide_legend("% expressing cells", title.position = "top")) 
+```
+
+``` {r}
+## set round one of cell type labels
+seu_int@meta.data$round1_celltype[seu_int@meta.data$RNA_snn_res.0.1 == 0] <- "Oligo"
+seu_int@meta.data$round1_celltype[seu_int@meta.data$RNA_snn_res.0.1 == 1] <- "Neurons"
+seu_int@meta.data$round1_celltype[seu_int@meta.data$RNA_snn_res.0.1 == 2] <- "Astrocyte"
+seu_int@meta.data$round1_celltype[seu_int@meta.data$RNA_snn_res.0.1 == 3] <- "Microglia"
+seu_int@meta.data$round1_celltype[seu_int@meta.data$RNA_snn_res.0.1 == 4] <- "OPC"
+seu_int@meta.data$round1_celltype[seu_int@meta.data$RNA_snn_res.0.1 == 5] <- "Endothelial"
+seu_int@meta.data$round1_celltype[seu_int@meta.data$RNA_snn_res.0.1 == 6] <- "Unknown"
+seu_int@meta.data$round1_celltype[seu_int@meta.data$RNA_snn_res.0.1 == 7] <- "Unknown"
+
+## Replot with round 1 labels
+dot_plot <- DotPlot(seu_int, features = par_select_features_list, group.by = 'round1_celltype')
+dot_plot2 <- data.frame(dot_plot$data)
+dot_plot2$features.plot <- factor(dot_plot2$features.plot, levels = c("AQP4", "GFAP", "CLDN5", "FLT1", "CD74", "C3", "MOBP", "MOG", "VCAN", "PDGFRA", "SLC17A6", "GAD2", "TH", "SLC6A3", "DDC"))
+dot_plot2$id <- factor(dot_plot2$id, levels = c('Astrocyte', 'Endothelial',  'Microglia',  'Oligo',  'OPC', 'Neurons', 'Unknown'))
+
+ggplot(dot_plot2, aes(x = features.plot , y = id, size = pct.exp, colour = avg.exp.scaled)) + 
+geom_point() +
+theme_classic() +
+theme(
+axis.text.x = element_text(angle=45, hjust = 1),
+axis.line.y = element_blank(),
+axis.ticks.y = element_blank(),
+axis.text.y = element_text(size =12, colour = "black"),
+axis.title = element_text(face="bold", size =12),
+legend.text = element_text( size =10),
+legend.title = element_text( size= 10),
+legend.position = "right") +
+scale_colour_gradientn(colors = blups, values = scales::rescale(c(-1,  0, 3)), na.value = "white")+
+scale_size(guide = guide_legend(direction = "vertical")) +
+ylab("") + xlab("") +
+guides(colour = guide_colorbar("Average expression", title.position = "top"), size = guide_legend("% expressing cells", title.position = "top")) 
+```
+
+```{r}
+## Print a UMAP to visualize round 1 labels
+DimPlot(seu_int, reduction = "umap.cca", group.by = "round1_celltype", label = TRUE, label.size = 3, repel = TRUE) + NoLegend() + ggtitle("Round 1 cell type annotations")
+```
+
+##########################################
+Method 4. Module score
+##########################################
+```{r}
+## Read in gene set file
+gene_sets <- read.delim("/home/moya90/projects/def-sponsor00/workshop_samples/Michael/data/module_score.csv", header = T, sep = ",", na.strings=c("","NA")) 
+
+## Convert user inputed dataframe to named list
+gene_lists <- list()                   
+for(i in 1:ncol(gene_sets)) {            
+  gene_lists[[i]] <- gene_sets[ , i]
+}
+names(gene_lists) <- colnames(gene_sets)
+
+## remove NA from list
+gene_lists <- lapply(gene_lists, function(x) x[!is.na(x)])
+```
+
+``` {r}
+## Loop to calculate the module score
+result <- list()
+for (i in names(gene_lists)) {
+    # Add module scores for each gene list
+    try( 
+      seu_int <- AddModuleScore(
+        seu_int,
+        features = gene_lists[i],
+        pool = NULL,
+        nbin = 24,
+        ctrl = 4,
+        k = FALSE,
+        name=paste0("moduleset_",i, "_")
+      ), silent = TRUE)
+    # set metadata into a dataframe
+    df <- data.frame(seu_int@meta.data)
+    names(df)
+    df1 <- df[ , paste0("moduleset_",i, "_1") ]
+    df1
+    df1 <- data.frame(df1)
+    rownames(df1) <- colnames(x = seu_int)
+    # add to Seurat metadata
+    seu_int <- AddMetaData(seu_int, df1, col.name = paste0("module_scores_",i))
+    
+    # print feature plot
+    try( 
+      print(
+        FeaturePlot(seu_int,
+                    features = paste0("module_scores_", i),
+                    label = TRUE,
+                    repel = TRUE,
+                    cols = c("white", "blue"))
+      ),
+      silent = TRUE
+    )
+    #ggsave(file = paste("module_score_",i, ".pdf", #sep='')) 
+    
+    # add cluster annotation to cell-wise expression
+    df1$cluster <- seu_int[['RNA_snn_res.0.1']]
+    colnames(df1)
+    
+    # calculate cluster-wise average module score 
+    mean_scores_cluster <- df1 %>%
+      group_by(cluster) %>%
+      dplyr::summarize(Mean = mean(df1, na.rm=TRUE))
+    
+    result[[i]] <- mean_scores_cluster$Mean
+    names(result[[i]]) <- mean_scores_cluster$cluster
+}
+```
+
+``` {r}
+# convert list object to dataframe for module scores
+df <- data.frame(result)
+df$clusters <- as.numeric(rownames(df)) -1
+# write to csv file
+#write.csv(df, paste("geneset_by_cluster.csv", #sep=""))
+
+## set round two of cell type labels
+seu_int@meta.data$round2_celltype[seu_int@meta.data$RNA_snn_res.0.1 == 0] <- "Oligo"
+seu_int@meta.data$round2_celltype[seu_int@meta.data$RNA_snn_res.0.1 == 1] <- "Neurons"
+seu_int@meta.data$round2_celltype[seu_int@meta.data$RNA_snn_res.0.1 == 2] <- "Astrocyte"
+seu_int@meta.data$round2_celltype[seu_int@meta.data$RNA_snn_res.0.1 == 3] <- "Microglia"
+seu_int@meta.data$round2_celltype[seu_int@meta.data$RNA_snn_res.0.1 == 4] <- "OPC"
+seu_int@meta.data$round2_celltype[seu_int@meta.data$RNA_snn_res.0.1 == 5] <- "Endothelial"
+seu_int@meta.data$round2_celltype[seu_int@meta.data$RNA_snn_res.0.1 == 6] <- "Unknown"
+seu_int@meta.data$round2_celltype[seu_int@meta.data$RNA_snn_res.0.1 == 7] <- "Neurons"
+
+## Print UMAP to visualize updated annotations
+DimPlot(seu_int, reduction = "umap.cca", group.by = "round2_celltype", label = TRUE, label.size = 3, repel = TRUE) + NoLegend() + ggtitle("Round 2 cell type annotations")
+
+```
+
+##########################################
+Method 5. Reference based predictions
+##########################################
+```{r}
+## load in the subsetted kamath object (subsetted to 8,00 cells)
+seu_reference <- readRDS('/home/moya90/projects/def-sponsor00/workshop_samples/Michael/data/KamathTotal_downsample2025.RDS')
+
+## Set parameters
+DefaultAssay(seu_reference) <- "RNA"
+
+## Look at the existing cell type annotations in the reference
+table(seu_reference@meta.data$Cell_Type)
+
+## Perform standard preprocessing on reference object
+seu_reference<- NormalizeData(seu_reference)
+seu_reference <- FindVariableFeatures(seu_reference)
+seu_reference<- ScaleData(seu_reference)
+seu_reference <- RunPCA(object = seu_reference, assay = "RNA", npcs = 50)
+
+## Find transfer anchors between reference and query Seurat objects
+transfer.anchors <- FindTransferAnchors(reference = seu_reference, query = seu_int, dims = 1:50, reference.reduction = "pca")
+
+## add reference-based annotations to the qeury object
+eval(parse(text = paste('predictions <- TransferData(anchorset = transfer.anchors, refdata = seu_reference$',"Cell_Type" ,',dims = 1:',50,')', sep='')))
+seu_int <- AddMetaData(object = seu_int, metadata = predictions)
+str(seu_int@meta.data)
+
+# Add metadata column for reference object
+seu_int$temp <- seu_int@meta.data$predicted.id
+name_meta <- names(seu_int@meta.data) 
+length <- length(name_meta)
+name_meta[length] <- paste("kamath_predictions", sep = "")
+names(seu_int@meta.data) <- name_meta
+
+## Print a umap projection showing the predicted cell types on the query object 
+seu_reference <- RunUMAP(seu_reference, dims = 1:50, reduction = "pca", return.model = TRUE)
+seu_int <- MapQuery(anchorset = transfer.anchors, reference = seu_reference, query = seu_int,
+    refdata = list(celltype = "Cell_Type"), reference.reduction = "pca", reduction.model = "umap")
+p1 <- DimPlot(seu_reference, reduction = "umap", group.by = "Cell_Type", label = TRUE, label.size = 3,repel = TRUE, raster=FALSE) + NoLegend() + ggtitle("Reference annotations")
+p2 <- DimPlot(seu_int, reduction = "umap.cca", group.by = "kamath_predictions", label = TRUE, label.size = 3, repel = TRUE) + NoLegend() + ggtitle("Query transferred labels")
+p1 + p2
+
+## Print summary table
+df <- data.frame(seu_int@meta.data)
+cluster_list <- list('RNA_snn_res.0.1')
+keep_list <- append(cluster_list, "predicted.id")
+df <- df[, (colnames(df) %in% keep_list)]
+df_summary <- table(df[,1], df[,2])
+df_summary <- data.frame(df_summary)
+colnames(df_summary) <- c("cluster", "predicted_cell_type", "number_of_cells")      
+
+
+## Compute the maximum reference predictions for each cluster
+df_max <- df_summary %>%
+  group_by(cluster) %>%
+  slice_max(order_by = number_of_cells, n = 1, with_ties = FALSE) %>%
+  ungroup()
+
+## View the resulting dataframe
+print(df_max)
+
+## Add final round of cluster annotations
+seu_int@meta.data$round3_celltype[seu_int@meta.data$RNA_snn_res.0.1 == 0] <- "Oligo"
+seu_int@meta.data$round3_celltype[seu_int@meta.data$RNA_snn_res.0.1 == 1] <- "Neurons"
+seu_int@meta.data$round3_celltype[seu_int@meta.data$RNA_snn_res.0.1 == 2] <- "Astrocyte"
+seu_int@meta.data$round3_celltype[seu_int@meta.data$RNA_snn_res.0.1 == 3] <- "Microglia"
+seu_int@meta.data$round3_celltype[seu_int@meta.data$RNA_snn_res.0.1 == 4] <- "OPC"
+seu_int@meta.data$round3_celltype[seu_int@meta.data$RNA_snn_res.0.1 == 5] <- "Endothelial"
+seu_int@meta.data$round3_celltype[seu_int@meta.data$RNA_snn_res.0.1 == 6] <- "Astrocyte" ## Was originally unknown
+seu_int@meta.data$round3_celltype[seu_int@meta.data$RNA_snn_res.0.1 == 7] <- "Neurons"
+
+## Print a UMAP with the finalized annotations
+DimPlot(seu_int, reduction = "umap.cca", group.by = "round3_celltype", label = TRUE, label.size = 3, repel = TRUE) + NoLegend() + ggtitle("Final cell type annotations")
+
+```
+
+##########################################
+Method 6. Asses pan-dataset cell type similarity
+##########################################
+We cannot run this code due to library issues. However, the code is provided below in case you want to use it for your personal analyses in the future. 
+
+## DO NOT RUN THIS CODE, IT WILL NOT WORK. 
+``` {r}
+## set default assay
+DefaultAssay(seu_reference) <- "RNA"
+
+
+## find variable feature
+seu_reference <- FindVariableFeatures(seu_reference)
+var_features <- VariableFeatures(seu_reference)
+
+## Set reference object as single cell experiment   
+Idents(seu_reference) <- seu_reference$Cell_Type
+seu_reference_SCE <- as.SingleCellExperiment(seu_reference)
+seu_reference_SCE <- seu_reference_SCE[var_features,]
+
+## Train the MetaNeighbour model on the reference object
+model_major_cluster = MetaNeighbor::trainModel(
+var_genes = rownames(seu_reference_SCE),
+dat = seu_reference_SCE,
+study_id = rep("Kammath", dim(seu_reference_SCE)[2]),
+cell_type = seu_reference_SCE$Cell_Type)
+
+aurocs = MetaNeighborUS(
+trained_model = model_major_cluster, dat = as.SingleCellExperiment(seu_int),
+study_id = rep("integrated", dim(seu_int)[2]), 
+cell_type = seu_int@meta.data$round3_celltype,
+fast_version = TRUE
+)
+```
+
+# This is the end of the workshop. In real world analyses, it is good practice to always save your updated Seurat object using the code below. It is not necessary in this case, but the code is provided for your own personal use in the future.
+
+``` {r}
+saveRDS(seu_int, '/home/fiorini9/scratch/2024_SCC_workshop/data/Int_Clustered_Celltype_Labelled.rds')
+```

@@ -209,7 +209,7 @@ str(mat_p)
 
 folderpath <- "~/Downloads/SC_Workshop2025/ParseExample/DGE_filtered"
 metafilepath <- file.path(folderpath, "cell_metadata.csv")
-matrixfile <- file.path(folderpath, pattern = "count_matrix.mtx")
+matrixfile <- file.path(folderpath, pattern = "count_matrix.mtx") 
 featuresfile <- file.path(folderpath, "all_genes.csv")
 
 # make the expression matrix
@@ -225,6 +225,7 @@ expression_matrix <- ReadMtx(
   skip.feature = 1, 
   mtx.transpose = TRUE  # we need to make to transpose to read into the Seurat object
 )
+
 
 # Have a look at the metadata file that has the cell barcodes
 metadata.parse <- read.csv(metafilepath) 

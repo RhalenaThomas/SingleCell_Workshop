@@ -37,10 +37,13 @@ Read in each of the data objects prepared in the first session
 ```{r}
 ### assuming your object are in the same working directory as this workbook we don't need to give a full filepathway
 ### the default working directory will be the pathway to the current workbook
-CT1 <- readRDS("CTRL1_cleaned.rds") 
-CT2 <- readRDS("CTRL2_cleaned.rds") 
-CT3 <- readRDS("CTRL3_cleaned.rds") 
-CT4 <- readRDS("CTRL4_cleaned.rds") 
+### the files are in Moein's folder
+save_dir <- "/Users/rhalenathomas/Downloads/SC_Workshop2025/"
+
+CT1 <- readRDS(paste0(save_dir,"CTRL1_cleaned.rds"))
+CT2 <- readRDS(paste0(save_dir,"CTRL2_cleaned.rds"))
+CT3 <- readRDS(paste0(save_dir,"CTRL3_cleaned.rds"))
+CT4 <- readRDS(paste0(save_dir,"CTRL4_cleaned.rds"))
 
 ```
 
@@ -342,13 +345,6 @@ Scaled expression of the Variable Features is the starting PCA input
 obj <- RunPCA(obj, assay = "RNA", nfeatures.print = 5, npcs = 50) # scale data is used as the input with only the variable features
 
 ```
-
-* New code chunk
-```{r}
-
-
-```
-
 
 
 
@@ -779,6 +775,148 @@ for(d in d_vector){
 
 ```
 
+
+Non-Negative Matrix Factorization
+
+https://github.com/linxihui/NNLM
+
+# this package is not installed 
+
+```{r}
+library(devtools)
+install_github('linxihui/NNLM')
+
+
+
+```
+
+
+```{r}
+
+library(NNLM)
+# 1. Get expression matrix from Seurat object
+# Use normalized data for NMF, and variable features to reduce noise
+expr_mat <- GetAssayData(CT1, layer = "data")  # log-normalized
+var_genes <- VariableFeatures(CT1)
+expr_mat <- expr_mat[var_genes, ]
+
+# 2. Ensure matrix is dense and non-negative
+expr_dense <- as.matrix(expr_mat)
+expr_dense[expr_dense < 0] <- 0  # Replace negative values with 0
+
+# 3. Set rank (number of components)
+k <- 10  # <-- ADJUST THIS to change how many latent factors/components to extract
+
+# 4. Run NMF using NNLM
+set.seed(123)
+nmf_res <- nnmf(expr_dense, k = k)
+
+# 5. Extract factor matrices
+W <- nmf_res$W  # genes × components
+H <- nmf_res$H  # components × cells
+
+# 6. Add to Seurat object as a DimReduc object
+CT1[["nmf"]] <- CreateDimReducObject(
+  embeddings = t(H),           # cells × components
+  loadings = W,                # genes × components
+  key = "NMF_",
+  assay = DefaultAssay(CT1)
+)
+
+# Now you can plot it:
+DimPlot(CT1, reduction = "nmf", dims = 1:2)
+# 2. Ensure matrix is dense and non-negative
+expr_dense <- as.matrix(expr_mat)
+expr_dense[expr_dense < 0] <- 0  # Replace negative values with 0
+
+# 3. Set rank (number of components)
+k <- 10  # <-- ADJUST THIS to change how many latent factors/components to extract how many "programs" "cell-state-types" do we expect?
+
+# 4. Run NMF using NNLM
+set.seed(123)
+nmf_res <- nnmf(expr_dense, k = k)
+
+# 5. Extract factor matrices
+W <- nmf_res$W  # genes × components
+H <- nmf_res$H  # components × cells
+
+# 6. Add to Seurat object as a DimReduc object
+CT1[["nmf"]] <- CreateDimReducObject(
+  embeddings = t(H),           # cells × components
+  loadings = W,                # genes × components
+  key = "NMF_",
+  assay = "RNA"
+)
+
+Idents(CT1) = "orig.ident"
+# Now you can plot it:
+DimPlot(CT1, reduction = "nmf", dims = 1:2)
+
+
+```
+
+Visualize the top 10 genes or change to othe number across factors - cells are grouped by the factor they contribute to most
+
+```{r}
+library(pheatmap)
+
+# Extract gene loadings from Seurat object
+loadings <- Loadings(CT1, reduction = "nmf")  # genes × factors
+
+# Top 10 genes per factor
+top_genes <- apply(loadings, 2, function(x) {
+  names(sort(x, decreasing = TRUE))[1:10]
+})
+
+# Get the top genes for each factor (flattened list)
+top_gene_list <- unique(as.vector(top_genes))
+expr_mat_top <- expr_mat[top_gene_list, ]
+
+# Group cells by max-activated factor
+group_by_factor <- apply(H, 2, which.max)  # which factor is highest in each cell
+names(group_by_factor) <- colnames(CT1)
+
+# Order cells by group
+cells_ordered <- names(sort(group_by_factor))
+
+# Subset and reorder expression
+expr_mat_ordered <- expr_mat_top[, cells_ordered]
+
+# Optional: add annotation bar (what factor activated a cell)
+annotation_col <- data.frame(Factor = as.factor(group_by_factor[cells_ordered]))
+rownames(annotation_col) <- cells_ordered
+
+# Plot heatmap
+pheatmap(as.matrix(expr_mat_ordered),
+         show_colnames = FALSE,
+         cluster_rows = TRUE,
+         cluster_cols = FALSE,
+         annotation_col = annotation_col,
+         main = "Top NMF Factor Genes Across Cells")
+
+```
+
+Visualize the component expression in cells
+
+```{r}
+library(ggplot2)
+library(reshape2)
+
+H_df <- as.data.frame(Embeddings(CT1, "nmf"))
+H_df$cell <- rownames(H_df)
+
+H_melted <- melt(H_df, id.vars = "cell")
+
+ggplot(H_melted, aes(x = variable, y = value)) +
+  geom_violin(fill = "skyblue", alpha = 0.6) +
+  labs(x = "NMF Factor", y = "Cell Loadings") +
+  theme_minimal()
+
+```
+
+Each factor contains all genes and all cells 
+
+The NFM values are the weightings of the contribution of each gene and each cell to each factor
 
 
 
