@@ -452,5 +452,5 @@ fast_version = TRUE
 # This is the end of the workshop. In real world analyses, it is good practice to always save your updated Seurat object using the code below. It is not necessary in this case, but the code is provided for your own personal use in the future.
 
 ``` {r}
-saveRDS(seu_int, '/home/fiorini9/scratch/2024_SCC_workshop/data/Int_Clustered_Celltype_Labelled.rds')
+saveRDS(seu_int, 'Int_Clustered_Celltype_Labelled.rds')
 ```
