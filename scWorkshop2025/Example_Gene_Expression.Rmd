@@ -143,12 +143,7 @@ nonCoding[1:10]
 
 ```{r}
 dtm <- GetAssayData(seu, layer = "counts", assay = "RNA") # note this code is adjusted for seurat 5
-
 dim(dtm) # rows = genes and column = cells
-
-
-
-
 ```
 
 
