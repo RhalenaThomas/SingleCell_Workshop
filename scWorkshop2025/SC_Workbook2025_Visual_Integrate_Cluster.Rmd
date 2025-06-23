@@ -524,8 +524,8 @@ louvain network detection
 
 ```{r}
 obj <- FindNeighbors(obj, reduction = "integrated.cca", dims = 1:30, k.param = 125)
-obj <- FindClusters(obj, resolution = c(0, 0.005 , 0.01, 0.05, 0.1, 0.25, 0.5, 0.75, 1.5))
-obj <- FindClusters(obj, resolution = c(0.0025))
+obj <- FindClusters(obj, resolution = c(0, 0.005,0.0025 , 0.01, 0.05, 0.1, 0.25, 0.5, 0.75, 1.5))
+
 colnames(obj@meta.data)
 
 ```
@@ -536,8 +536,30 @@ colnames(obj@meta.data)
 clustree(obj, prefix = "RNA_snn_res.")
 ```
 
+What is going on with this tree?
+
 ```{r}
-resolutions = c(0, 0.0025,0.005 , 0.01, 0.05, 0.1, 0.5, 0.9)
+
+# "RNA_snn_res.0.4" is from the scUtiles droplet removal 
+
+# check the column names
+colnames(obj@meta.data)
+
+```
+```{r}
+# remove that clustering 
+obj$RNA_snn_res.0.4 <- NULL
+
+# is it gone
+colnames(obj@meta.data)
+```
+Yes it's gone 
+We could also specifiy only specific the resolutions we want
+
+
+
+```{r}
+resolutions = c(0, 0.005,0.0025 , 0.01, 0.05, 0.1, 0.25, 0.5, 0.75, 1.5)
 res_vector = paste0("RNA_snn_res.",resolutions)
 
 for(res in res_vector){
@@ -564,7 +586,7 @@ Have a look at the clustree with the clusters at a different resolution
 ```{r}
 
 # re need to change this code:
-clustree(obj, prefix = "RNA_snn_res.")   # how do we change this code to plot only the new clusters?
+clustree(obj, prefix = "kn65_snn_res.")   # how do we change this code to plot only the new clusters?
  
 
 
@@ -572,12 +594,12 @@ clustree(obj, prefix = "RNA_snn_res.")   # how do we change this code to plot on
 
 
 ```{r}
-# how do we change this code to show different UMAPs?
-resolutions = c(0, 0.0025,0.005 , 0.01, 0.05, 0.1, 0.5, 0.9)
-res_vector = paste0("RNA_snn_res.",resolutions)
+# Change the reduction in the DimPlot to control the UMAP - make sure you named your umap something else
+resolutions = c(0.005, 0.1,0.5,0.9,1.5)
+res_vector = paste0("kn65_snn_res.",resolutions)
 
 for(res in res_vector){
-  print(DimPlot(obj, reduction = "integrated_umap", group.by = res))
+  print(DimPlot(obj, reduction = "kn65_umap", group.by = res))
 }
 
 
@@ -603,24 +625,6 @@ Layers(obj)
 ```
 
 
-
-Clean up the object 
-
-```{r}
-
-cat("our object has these reductions:\n")
-Reductions(obj) # keep all
-cat("we will keep all the reductions \n\n")
-
-cat("our object has these layers in the default assay (RNA) :\n")
-Layers(obj) # remove the separately scaled data layers
-cat("we will remove the individual scale.data layers \n\n")
-
-cat("our object has these meta data columns which include our clusters:\n")
-colnames(obj@meta.data)
-
-```
-
 Remove extra layers 
 
 ```{r}
@@ -628,13 +632,13 @@ Remove extra layers
 # be sure to edit code
 
 
-to_remove <- grep("^scale.data.CTRL", names(obj@assays$RNA), value = TRUE)
+#to_remove <- grep("^scale.data.CTRL", names(obj@assays$RNA), value = TRUE)
 
 # Remove those elements
-for (item in to_remove) {
-  obj@assays$RNA[[item]] <- NULL
-}
-Layers(obj) 
+#for (item in to_remove) {
+#  obj@assays$RNA[[item]] <- NULL
+#}
+#Layers(obj) 
 
 ```
 
@@ -642,16 +646,18 @@ Remove unwanted meta.data
 
 ```{r}
 # we must adjust this to match what data we want to remove
-
-obj@meta.data <- obj@meta.data[, c(1:3,6:7,9:11)]
 colnames(obj@meta.data)
+# can specify by column index
+#obj@meta.data <- obj@meta.data[, c(1:3,6:7,9:11)]
+
+
 ```
 
 
 # save clustered object for annotation
 
 ```{r}
-saveRDS(obj, "Int_Clustered.rds")
+# saveRDS(obj, "Int_Clustered.rds")
 ```
 
 
@@ -674,7 +680,7 @@ Lets reduce the number of cells to explore umap parameters faster
 ```{r}
 
 Idents(obj) <- "orig.ident"
-seu <- subset(obj, downsample = 200)
+seu <- subset(obj, downsample = 1000)
 table(seu$orig.ident)
 
 ```
@@ -684,16 +690,17 @@ FIX THE CODE
 ```{r}
 
 # exlplore some paramaters 
-
+Idents(seu) <- "kn65_snn_res.0.9"
 # these are the defaults 
 d.n.neigbors = 30
 d.min.dist = 0.3
 d.spread = 1 
 
-seu <- RunUMAP(seu, reduction = "integrated_cca", dims = 1:30, n.neighbors = d.n.neigbors, spread = d.spread, a = 0.8, b = 0.7, reduction.name = "umap") # here we get an error why? 
+# this commented out code will have an error
+#seu <- RunUMAP(seu, reduction = "integrated.cca", dims = 1:30, n.neighbors = d.n.neigbors, spread = d.spread, a = 0.8, b = 0.7, reduction.name = "umap") # here we get an error why? 
 
-cat("Our error says this reduction is not found?  Why not?  Lets look at what reductions are there:\n")
-Reductions(obj)
+#cat("Our error says this reduction is not found?  Why not?  Lets look at what reductions are there:\n")
+#Reductions(obj)
 
 
 seu <- RunUMAP(seu, reduction = "integrated.cca", dims = 1:30, n.neighbors = d.n.neigbors, spread = d.spread, a = 0.8, b = 0.7, reduction.name = "umap")
@@ -704,7 +711,7 @@ DimPlot(seu)
 
 ```
 
-REMEMBER TO FIX THE CODE !!!!!! 
+
 Loop through to explore parameters:
 
 ```{r}
@@ -714,42 +721,18 @@ for(a in a_vector){
   for(b in b_vector){
     umap_name <- paste0("a",a,"b",b,"_umap")
     cat("Creating UMAP with ",a," ",b,"parameters\n")
-    key_name = paste0("UMAP",a,".",b,"_")
+    key_name = paste0("UMAP_a",a,"b",b,"_")
     seu <- RunUMAP(seu, reduction = "integrated.cca", dims = 1:30, n.neighbors = d.n.neigbors, spread = d.spread, a = a, b = b, reduction.name = umap_name, reduction.key = key_name)
     print(DimPlot(seu, reduction = umap_name))
   }
 }
 
 ```
+
+The UMAP with a = 0.5 and b = 1.2 creates a plot where the clusters speparate in space (mostly) and it doesn't seem that clusters are split up in space
+
 
 What about with distance and spread changed instead?
-
-
-```{r}
-
-# what should we change?
-
-a_vector <- c(0.5,1.5)
-b_vector <- c(0.3, 0.9)
-for(a in a_vector){
-  for(b in b_vector){
-    umap_name <- paste0("a",a,"b",b,"_umap")
-    cat("Creating UMAP with ",a," ",b,"parameters\n")
-    key_name = paste0("UMAP",a,".",b,"_")
-    seu <- RunUMAP(seu, reduction = "integrated.cca", dims = 1:30, n.neighbors = d.n.neigbors, spread = d.spread, a = a, b = b, reduction.name = umap_name, reduction.key = key_name)
-    print(DimPlot(seu, reduction = umap_name))
-  }
-}
-
-
-
-
-
-
-
-
-```
-
 
 This controls how tightly the embedding is allowed compress points together. Larger values ensure embedded points are more evenly distributed, while smaller values allow the algorithm to optimize more accurately with regard to local structure. Sensible values are in the range 0.001 to 0.5.
 
@@ -774,6 +757,8 @@ for(d in d_vector){
 
 
 ```
+We can see how much the cells move around in the UMAP depending on the distance and spread!
+
 
 
 Non-Negative Matrix Factorization
@@ -785,7 +770,6 @@ https://github.com/linxihui/NNLM
 ```{r}
 library(devtools)
 install_github('linxihui/NNLM')
-
 
 
 ```

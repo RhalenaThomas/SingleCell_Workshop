@@ -13,11 +13,17 @@ library(ggplot2)
 library(patchwork)
 library(dplyr)
 library(Matrix)
+library(UpSetR)
 
-seu <- readRDS("/Users/rhalenathomas/Downloads/SC_Workshop2025/CTRL1_cleaned.rds")
+# your data or any example data can be used
+
+# seu <- readRDS("SeuratObject.rds")
 seu
 
 ```
+
+
+
 
 
 
@@ -315,23 +321,98 @@ ggplot(df_bin, aes(x = mean, y = scaled_dispersion)) +
 ```
 
 
+Explore Variable Feature Selection Overlap
 
-
-
-
-# make an upset plot comparing the 3 FindVariableFeatures options
 ```{r}
-library(UpSetR)
 
-upset(fromList(list(vst = Var_ft_vst, mvp = Var_ft_mvp, disp = Var_ft_dis)))
+
+
+# calculate variable features in different ways
+FindVariableFeatures(seu, selection.method = "vst",
+  loess.span = 0.3,
+  clip.max = "auto",
+  num.bin = 20,
+  binning.method = "equal_width",
+  nfeatures = 2000, # default
+  mean.cutoff = c(0.1, 8), # used in mvp
+  dispersion.cutoff = c(1, Inf), # used in dispression
+  verbose = TRUE)
+
+
+Var_ft_vst <- VariableFeatures(seu)
+# put the features into a spot where we can recover them later
+seu@misc$Var_ft_vst <- Var_ft_vst
+
+top10vst <- head(seu@misc$Var_ft_vst, 10)
+plot1 <- VariableFeaturePlot(seu, assay = "RNA", selection.method = "vst") 
+LabelPoints(plot = plot1, points = top10vst, repel = TRUE)
+
+
+cat("---------------------------------------------------------------------------------------\n\n")
+
+seu <- FindVariableFeatures(seu, selection.method = "mean.var.plot",
+  loess.span = 0.3,
+  clip.max = "auto",
+  num.bin = 20,
+  binning.method = "equal_width",
+  mean.cutoff = c(0.1, 8),
+  dispersion.cutoff = c(1, Inf),
+  verbose = TRUE)
+
+Var_ft_mvp <- VariableFeatures(seu)
+seu@misc$Var_ft_mvp <- Var_ft_mvp
+
+VariableFeatures(seu) <- seu@misc$Var_ft_mvp
+# Identify the 10 most highly variable genes
+top10mvp <- head(seu@misc$Var_ft_mvp, 10)
+
+# plot variable features with and without labels
+plot2 <- VariableFeaturePlot(seu, assay = "RNA", selection.method = "mean.var.plot")  
+LabelPoints(plot = plot2, points = top10mvp, repel = TRUE)
+
+cat("---------------------------------------------------------------------------------------\n\n")
+
+
+seu <- FindVariableFeatures(seu, selection.method = "dispersion",
+  loess.span = 0.3,
+  clip.max = "auto",
+  num.bin = 20, 
+   nfeatures = 2000,
+  binning.method = "equal_width",
+  mean.cutoff = c(0.1, 8),
+  dispersion.cutoff = c(1, Inf),
+  verbose = TRUE)
+
+Var_ft_dis <- VariableFeatures(seu)
+seu@misc$Var_ft_dis <- Var_ft_dis
+
+
+VariableFeatures(seu) <- seu@misc$Var_ft_dis
+# Identify the 10 most highly variable genes
+top10dis <- head(VariableFeatures(seu), 10)
+
+# plot variable features with and without labels
+plot3 <- VariableFeaturePlot(seu, assay = "RNA", selection.method = "dispersion",top10dis, repel = TRUE)
+LabelPoints(plot = plot2, points = top10dis, repel = TRUE)
+
+
+
+cat("---------------------------------------------------------------------------------------\n\n")
+
+
 
 
 ```
 
 
-Plot the interesecting features and label the top intersecting features
 
+# make an upset plot comparing the 3 FindVariableFeatures options
 ```{r}
+
+
+upset(fromList(list(vst = Var_ft_vst, mvp = Var_ft_mvp, disp = Var_ft_dis)))
+
+# more options gene lists can be included if wanted
 
 ```
 
@@ -341,6 +422,7 @@ Make an upset plot for the variable features for each sample and the merged obje
 
 ```{r}
 
+# example
 upset(fromList(list(C1 = Var_C1, C2 = Var_C2, C3 = Var_C3, C4 = Var_C4, Combined = Var_obj)))
 
 ```
