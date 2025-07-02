@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Single Cell Workshop 2023 Workbooks</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      margin: 0;
+    }
+    .sidebar {
+      width: 200px;
+      background-color: #f2f2f2;
+      padding: 20px;
+      height: 100vh;
+      box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+      flex-shrink: 0;
+    }
+    .sidebar h2 {
+      font-size: 18px;
+    }
+    .sidebar a {
+      display: block;
+      padding: 8px 0;
+      text-decoration: none;
+      color: #333;
+    }
+    .sidebar a:hover {
+      color: #007acc;
+    }
+    .main {
+      padding: 20px;
+      flex-grow: 1;
+    }
+    .workbook {
+      margin-bottom: 30px;
+    }
+    .download {
+      font-size: 0.9em;
+      margin-left: 10px;
+      color: gray;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <h2>Contents</h2>
+    <a href="../index.html">🏠 Home</a>
+    <a href="../README.md">📄 About the Single Cell Workshop</a>
+    <a href="../scWorkshop2025/">📁 2025 Notebooks</a>
+    <a href="../scWorkshop2024/">📁 2024 Notebooks</a>
+    <a href="./">📁 2023 Notebooks</a>
+    <a href="../code/">📁 Slides</a>
+  </div>
+
+  <!-- Main content area -->
+  <div class="main">
+
+    <h1>Single Cell Workshop 2024 Workbooks</h1>
+    <p><strong>TO BE UPDATED WITH CORRECT LINKS</strong></p>
+
+    <h2>We used Magic Castle an interface using Jupyter interface to allow us to run R studio workbooks using DRAC resources. </h2>
+    <ul>
+      <li>Installation of required R libraries (<code>SingleCellWorkshop_2023_package_installations.R</code>)</li>
+    </ul>
+
+    <h2>Single Cell Sequencing Analysis Workflow</h2>
+
+    <div class="workbook">
+      <h3>Workbook 1</h3>
+      <ul>
+        <li>Loading data</li>
+        <li>Quality Control
+          <ul>
+            <li>Cell filtering</li>
+            <li>Doublet assessment</li>
+          </ul>
+        </li>
+        <li>Normalization</li>
+        <li>Feature selection</li>
+        <li>Dimensionality reduction</li>
+      </ul>
+      <p>
+        <a href="SingleCell_Analysis2023_complete_book1WS.html" target="_blank">View Workbook 1 (HTML)</a>
+        <a href="SingleCell_Analysis2023_complete_book1WS.Rmd" class="download" download>Download Workbook 1 (Rmd)</a>
+      </p>
+    </div>
+
+    <div class="workbook">
+      <h3>Workbook 2</h3>
+      <ul>
+        <li>Merging samples and batch correction</li>
+        <li>Clustering</li>
+        <li>Cluster annotation
+          <ul>
+            <li>Find cluster markers and look at reference cell type libraries</li>
+            <li>Look at expression of known cell type markers</li>
+            <li>Automated annotation</li>
+          </ul>
+        </li>
+        <li>Compare proportions of cell types</li>
+      </ul>
+      <p>
+        <a href="SingleCell_Analysis2023_complete_book2WS.html" target="_blank">View Workbook 2 (HTML)</a>
+        <a href="SingleCell_Analysis2023_complete_book2WS.Rmd" class="download" download>Download Workbook 2 (Rmd)</a>
+      </p>
+    </div>
+
+    <div class="
