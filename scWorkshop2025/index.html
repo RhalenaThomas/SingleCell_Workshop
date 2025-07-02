@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Single Cell Workshop 2023 Workbooks</title>
+  <title>Single Cell Workshop 2025 Workbooks</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -49,10 +49,10 @@
   <div class="sidebar">
     <h2>Contents</h2>
     <a href="../index.html">🏠 Home</a>
-    <a href="../README.md">📄 About the Single Cell Workshop</a>
+    <a href="../aboutSCCworkshop.html">📄 About the Single Cell Workshop</a>
     <a href="./">📁 2025 Notebooks</a>
     <a href="../scWorkshop2024/">📁 2024 Notebooks</a>
-    <a href="..SingleCellWorkshop2023/">📁 2023 Notebooks</a>
+    <a href="../SingleCellWorkshop2023/">📁 2023 Notebooks</a>
     <a href="../code/">📁 Slides</a>
   </div>
 
@@ -60,53 +60,70 @@
   <div class="main">
 
     <h1>Single Cell Workshop 2025 Workbooks</h1>
-    <p><strong>TO BE UPDATED WITH CORRECT LINKS</strong></p>
 
-    <h2>We used Magic Castle an interface using Jupyter interface to allow us to run R studio workbooks using DRAC resources. </h2>
-    <ul>
-      <li>Installation of required R libraries (<code>SingleCellWorkshop_2023_package_installations.R</code>)</li>
-    </ul>
-
-    <h2>Single Cell Sequencing Analysis Workflow</h2>
+    <h2>We used Magic Castle (Jupyter interface) to run RStudio notebooks using DRAC resources.</h2>
 
     <div class="workbook">
-      <h3>Workbook 1</h3>
+      <h3>Workbook 1: Essentials of Data Structures</h3>
       <ul>
-        <li>Loading data</li>
-        <li>Quality Control
-          <ul>
-            <li>Cell filtering</li>
-            <li>Doublet assessment</li>
-          </ul>
-        </li>
-        <li>Normalization</li>
-        <li>Feature selection</li>
-        <li>Dimensionality reduction</li>
+        <li>CellRanger and ParseBio matrix exploration</li>
+        <li>Reading files into R</li>
+        <li>Data structures and metadata inspection</li>
       </ul>
       <p>
-        <a href="SingleCell_Analysis2023_complete_book1WS.html" target="_blank">View Workbook 1 (HTML)</a>
-        <a href="SingleCell_Analysis2023_complete_book1WS.Rmd" class="download" download>Download Workbook 1 (Rmd)</a>
+        <!-- Link text: "View Data Structures Workbook" -->
+        <a href="Essentials_of_DataStructures.nb.html" target="_blank">View Data Structures Workbook (HTML)</a>
+        <a href="Essentials_of_DataStructures.Rmd" class="download" download>Download Rmd</a>
       </p>
     </div>
 
     <div class="workbook">
-      <h3>Workbook 2</h3>
+      <h3>Workbook 2: Running a Full Single Cell Analysis</h3>
       <ul>
-        <li>Merging samples and batch correction</li>
-        <li>Clustering</li>
-        <li>Cluster annotation
-          <ul>
-            <li>Find cluster markers and look at reference cell type libraries</li>
-            <li>Look at expression of known cell type markers</li>
-            <li>Automated annotation</li>
-          </ul>
-        </li>
-        <li>Compare proportions of cell types</li>
+        <li>Loading data and generating a Seurat object</li>
+        <li>Quality control, filtering</li>
+        <li>Normalization and dimension reduction</li>
       </ul>
       <p>
-        <a href="SingleCell_Analysis2023_complete_book2WS.html" target="_blank">View Workbook 2 (HTML)</a>
-        <a href="SingleCell_Analysis2023_complete_book2WS.Rmd" class="download" download>Download Workbook 2 (Rmd)</a>
+        <!-- Link text: "View Main Workshop Notebook" -->
+        <a href="single_cell_workshop_Notebook_file_2025.nb.html" target="_blank">View Main Workshop Notebook (HTML)</a>
+        <a href="single_cell_workshop_Notebook_file_2025.Rmd" class="download" download>Download Rmd</a>
       </p>
     </div>
 
-    <div class="
+    <div class="workbook">
+      <h3>Workbook 3: Integration and Visualization</h3>
+      <ul>
+        <li>Combining samples</li>
+        <li>UMAP, clustering</li>
+        <li>Exploring cell type composition</li>
+      </ul>
+      <p>
+        <!-- Link text: "View Integration & Clustering Workbook" -->
+        <a href="SC_Workbook2025_Visual_Integrate_Cluster.nb.html" target="_blank">View Integration & Clustering Workbook (HTML)</a>
+        <a href="SC_Workbook2025_Visual_Integrate_Cluster.Rmd" class="download" download>Download Rmd</a>
+      </p>
+    </div>
+
+    <div class="workbook">
+      <h3>Extra: Visualization and Exploration Tools</h3>
+      <ul>
+        <li>Custom plots and dimensionality reduction options</li>
+        <li>Exporting results</li>
+      </ul>
+      <p>
+        <!-- Link text: "View Extra Visualizations" -->
+        <a href="ExtraVisualizations.nb.html" target="_blank">View Extra Visualizations (HTML)</a>
+        <a href="ExtraVisualizations.Rmd" class="download" download>Download Rmd</a>
+      </p>
+    </div>
+
+    <div class="workbook">
+      <h3>Workbook 4: Coming Soon</h3>
+      <p>This section will be updated with the final workshop workbook.</p>
+    </div>
+
+  </div>
+
+</body>
+</html>
