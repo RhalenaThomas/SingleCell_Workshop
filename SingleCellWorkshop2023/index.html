@@ -3,44 +3,54 @@
 <head>
   <meta charset="UTF-8" />
   <title>Single Cell Workshop 2023 Workbooks</title>
-  <style>
+ 
+    <style>
     body {
       font-family: Arial, sans-serif;
-      max-width: 800px;
-      margin: 30px auto;
-      padding: 0 20px;
-      line-height: 1.5;
+      display: flex;
+      margin: 0;
     }
-    h1, h2 {
-      color: #007acc;
+    /* Sidebar styling */
+    .sidebar {
+      width: 200px;
+      background-color: #f2f2f2;
+      padding: 20px;
+      height: 100vh;
+      box-shadow: 2px 0 5px rgba(0,0,0,0.1);
     }
-    ul {
-      list-style-type: disc;
-      margin-left: 20px;
+    .sidebar h2 {
+      font-size: 18px;
     }
-    .workbook {
-      margin-bottom: 20px;
-    }
-    a {
-      color: #007acc;
+    .sidebar a {
+      display: block;
+      padding: 8px 0;
       text-decoration: none;
+      color: #333;
     }
-    a:hover {
-      text-decoration: underline;
+    .sidebar a:hover {
+      color: #007acc;
     }
-    .download {
-      font-size: 0.9em;
-      margin-left: 10px;
-      color: gray;
-    }
-    hr {
-      margin: 30px 0;
-      border: none;
-      border-top: 1px solid #ddd;
+    /* Main content area */
+    .main {
+      padding: 20px;
+      flex-grow: 1;
     }
   </style>
 </head>
 <body>
+
+  <!-- SIDEBAR with navigation tabs -->
+  <div class="sidebar">
+    <h2>Contents</h2>
+    <a href="index.html">Home</a> <!-- This the home page -->
+    <a href="README.md">About the Single Cell Workshop</a> <!-- Sample second page -->
+    <a href="scWorkshop2025/">📁 2025 Notebooks</a> <!-- Link to code folder -->
+    <a href="scWorkshop2024/">📁 2024 Notebooks</a> <!-- Link to code folder -->
+    <a href="SingleCellWorkshop2023/">📁 2023 Notebooks</a> <!-- Link to code folder -->
+    <a href="code/">📁 Slides</a> <!-- Link to code folder -->
+    <!-- Add more tabs as needed -->
+  </div>
+
 
   <h1>Single Cell Workshop 2023 Workbooks</h1>
 
