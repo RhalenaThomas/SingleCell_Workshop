@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>SingleCell Workshop</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      margin: 0;
+    }
+    .sidebar {
+      width: 200px;
+      background-color: #f2f2f2;
+      padding: 20px;
+      height: 100vh;
+      box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+      flex-shrink: 0;
+    }
+    .sidebar h2 {
+      font-size: 18px;
+    }
+    .sidebar a {
+      display: block;
+      padding: 8px 0;
+      text-decoration: none;
+      color: #333;
+    }
+    .sidebar a:hover {
+      color: #007acc;
+    }
+    .main {
+      padding: 20px;
+      flex-grow: 1;
+    }
+    h1, h2, h3 {
+      color: #333;
+    }
+    ul {
+      padding-left: 20px;
+    }
+    li {
+      margin-bottom: 5px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <h2>Contents</h2>
+    <a href="index.html">Home</a>
+    <a href="README.md">📄 About the Workshop</a>
+    <a href="scWorkshop2025/">📁 2025 Notebooks</a>
+    <a href="scWorkshop2024/">📁 2024 Notebooks</a>
+    <a href="SingleCellWorkshop2023/">📁 2023 Notebooks</a>
+    <a href="code/">📁 Slides</a>
+  </div>
+
+  <!-- Main content -->
+  <div class="main">
+    <h1>SingleCell_Workshop</h1>
+    <p>
+      Brought to you by <a href="https://www.mcgill.ca/neuro/" target="_blank">The Neuro</a> and
+      <a href="https://singlecellclub.openscience.mcgill.ca/" target="_blank">Single Cell Club</a>
+    </p>
+
+    <p>
+      We present a complete workflow for single cell transcriptomics analysis – see the
+      <a href="https://mcgill-my.sharepoint.com/personal/moein_yaqubi_mail_mcgill_ca/_layouts/15/onedrive.aspx?id=%2Fpersonal%2Fmoein%5Fyaqubi%5Fmail%5Fmcgill%5Fca%2FDocuments%2FSingleCellWorkshop%20agendaJune2025%5Ffinal%5Fagenda%5FApril%5F9th%2Epdf&parent=%2Fpersonal%2Fmoein%5Fyaqubi%5Fmail%5Fmcgill%5Fca%2FDocuments&ga=1" target="_blank">
+        2025 SingleCell Workshop Agenda
+      </a>.
+    </p>
+
+    <p>
+      The workshop is presented in R notebooks which will be run in Magic Castle with the Digital Computing Alliance of Canada.
+    </p>
+
+    <h2>Prepare to Run Analysis</h2>
+    <ul>
+      <li>Everything will be set up for you during the workshop and we are not supporting other methods during the workshop.</li>
+      <li>If you want to run the workbooks locally you will need to install all the required R libraries.</li>
+      <li>See the installation script for local usage (your laptop or workstation computer).</li>
+      <li>If you are comfortable in base R or HPC you can also convert the workbooks and run scripts in debug mode using the <code>HPC_DRAC_installation.md</code> instructions.</li>
+    </ul>
+
+    <h2>Single Cell Sequencing Analysis Workflow</h2>
+
+    <h3>Section 1: Understanding data structures for scRNAseq Data</h3>
+    <ul>
+      <li>Looking at the CellRanger and ParseBio Split-Pipe sequencing alignment and expression matrix outputs</li>
+      <li>Reading files into R</li>
+      <li>Data structures and exploration in R</li>
+    </ul>
+
+    <h3>Section 2:</h3>
+    <ul>
+      <li>Loading data and generating a Seurat object</li>
+      <li>scRNAseq data visualization, format and exploration in Seurat</li>
+      <li>Quality Control measures</li>
+      <li>Filtering data</li>
+    </ul>
+
+    <h3>Section 3:</h3>
+    <ul>
+      <li>Combining samples: merging and integration</li>
+      <li>Normalization</li>
+      <li>Feature selection</li>
+      <li>Dimensionality reduction: PCA, UMAP</li>
+      <li>Clustering: nearest neighbour network, Louvain network detection</li>
+    </ul>
+
+    <h3>Section 4: Cluster Annotation</h3>
+    <ul>
+      <li>Find cluster markers and look at reference cell type libraries</li>
+      <li>Look at expression of known cell type markers</li>
+      <li>Automated annotation</li>
+    </ul>
+
+    <h3>Extra Workbook:</h3>
+    <ul>
+      <li>Code for topics covered but not run in the workshop:
+        <ul>
+          <li>Ambient RNA detection and adjustment</li>
+          <li>Doublet identification and removal</li>
+          <li>Data imputation to account for low read gene sequence drop out</li>
+        </ul>
+      </li>
+    </ul>
+  </div>
+
+</body>
+</html>
